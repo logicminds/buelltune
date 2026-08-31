@@ -87,9 +87,13 @@ APK outputs land in `app/build/outputs/apk/{debug,release}/`.
 - **Dependencies** are centralized in `gradle/libs.versions.toml`; add/bump
   there and reference via `libs.*` aliases in `app/build.gradle.kts` — never
   hardcode Maven coordinates directly in the module build file.
-- **Hardware-free testing**: use [ecmsim](https://github.com/ecmdroid/ecmsim)
-  (a standalone ECM protocol simulator) to exercise the app without a real
-  motorcycle.
+- **Hardware-free testing**: `ecmsim` (github.com/ecmdroid/ecmsim, a
+  standalone ECM protocol simulator) is vendored as a pinned submodule at
+  `third_party/ecmsim`. `./gradlew ecmsimRun` builds it via its own Maven
+  wrapper (JDK 21+ required — separate `JAVA_HOME`/`-PecmsimJavaHome=`
+  requirement from the Android build) and starts it against the bundled
+  `BUEIB` fixtures on TCP port 6280 (`./gradlew ecmsimBuild` builds only);
+  see README.md's "Running the simulator" section for options.
 
 ## 3. High-Level Architecture
 

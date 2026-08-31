@@ -1,0 +1,3 @@
+[submodule "third_party/ecmsim"]
+	path = third_party/ecmsim
+	url = https://github.com/ecmdroid/ecmsim

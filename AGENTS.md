@@ -68,6 +68,8 @@ Release signing is optional and file-based: create a git-ignored `keystore.prope
 
 Bump the shipped version by editing `versionCode`/`versionName` in `app/build.gradle.kts`.
 
+Hardware-free ECM simulator: `third_party/ecmsim` is a pinned git submodule of `github.com/ecmdroid/ecmsim`. `./gradlew ecmsimBuild` builds its jar via its own Maven wrapper (requires a JDK 21+ `JAVA_HOME`, or pass `-PecmsimJavaHome=/path/to/jdk21`); `./gradlew ecmsimRun` builds it if needed and starts it against the bundled `BUEIB` fixtures on TCP port 6280 (`-PecmsimModel=`/`-PecmsimPort=`/`-PecmsimXpr=`/`-PecmsimLog=` override the defaults).
+
 ## Code Conventions & Common Patterns
 
 - **Language**: pure Java 8 (source/target compatibility `1.8`). Gradle files use Kotlin DSL (`.kts`) but no Kotlin app code — do not introduce Kotlin without discussion.
