@@ -83,6 +83,8 @@ import biz.logicminds.buelltune.fragments.SetupFragment;
 import biz.logicminds.buelltune.fragments.TorqueValuesFragment;
 import biz.logicminds.buelltune.fragments.TroubleCodeFragment;
 import biz.logicminds.buelltune.task.FetchTask;
+import biz.logicminds.buelltune.transport.EcmTransport;
+import biz.logicminds.buelltune.transport.TransportFactory;
 
 import java.io.IOException;
 import java.util.List;
@@ -519,18 +521,19 @@ public class MainActivity extends AppCompatActivity
 			}
 			publishProgress(String.format(Locale.US, "Connecting to %1$s...", target));
 			try {
+				EcmTransport transport;
 				if (btDevice != null) {
 					if (ble) {
-						ecm.connect(this.context, btDevice, protocol);
+						throw new IOException("BLE transport is not yet available.");
 					} else {
-						ecm.connect(btDevice, protocol);
+						transport = TransportFactory.bluetoothClassic(btDevice);
 					}
 				} else if (uart != null) {
-					ecm.connect(uart, protocol);
+					throw new IOException("USB-serial transport is not yet available.");
+				} else {
+					transport = TransportFactory.tcp(host, port);
 				}
-				else {
-					ecm.connect(host, port, protocol);
-				}
+				ecm.connect(transport, protocol);
 			} catch (Exception e) {
 				return e;
 			}

@@ -21,8 +21,8 @@ import java.text.ParseException
 
 /**
  * This class represents a data frame exchanged with the ECM via
- * [ECM.sendPDU] and [ECM.receivePDU]. a PDU consists of a
- * header, payload and trailing checksum.
+ * [ECM.sendPDU] and (as of U7) [biz.logicminds.buelltune.transport.PduFraming.readFrame].
+ * A PDU consists of a header, payload and trailing checksum.
  */
 class PDU {
 	private val pdu: ByteArray

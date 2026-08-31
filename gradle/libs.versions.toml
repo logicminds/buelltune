@@ -13,6 +13,7 @@ usbSerial =  "3.9.0"
 room = "2.8.4"
 coroutines = "1.11.0"
 composeBom = "2026.02.01"
+mockito = "5.14.2"
 
 [libraries]
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
@@ -21,6 +22,7 @@ documentfile = { group = "androidx.documentfile", name = "documentfile", version
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 usbserial = { group= "com.github.mik3y", name = "usb-serial-for-android", version.ref = "usbSerial"}
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitExt" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }

@@ -18,6 +18,7 @@
 package biz.logicminds.buelltune
 
 import biz.logicminds.buelltune.data.EepromPageRow
+import biz.logicminds.buelltune.transport.TransportFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -28,14 +29,13 @@ import java.io.OutputStream
 import java.net.ServerSocket
 
 /**
- * Exercises ECM's protocol layer (R5, R8) over the plain-`java.net.Socket`
- * TCP `connect()` overload -- the one transport path with zero Android
- * dependency, so the still-verbatim-ported protocol code
- * (`sendPDU`/`receivePDU`/`readRTData`/`readEEPromPage`/`writeEEPromPage`/
- * `handleConnectionLost`) can be driven from a pure JVM test ahead of U7's
- * transport extraction. U7 replaces the raw socket used here with
- * `EcmTransport`; the scenarios below are the contract that extraction must
- * keep passing.
+ * Exercises ECM's protocol layer (R5, R8) over [TransportFactory.tcp] -- the
+ * one transport path with zero Android dependency, so the still-verbatim-
+ * ported protocol code (`sendPDU`/`readRTData`/`readEEPromPage`/
+ * `writeEEPromPage`) can be driven from a pure JVM test. Originally pinned
+ * ahead of U7's transport extraction against the raw `ECM.connect(host,
+ * port, protocol)` overload; now exercises the real `EcmTransport` path
+ * those overloads were replaced by, with the same scenarios unchanged.
  *
  * A minimal protocol-aware fake ECM ([FakeEcmServer]) speaks the real wire
  * framing (SOH/EOH/SOT/EOT + XOR checksum) via [PDU] on the server side of a
@@ -59,7 +59,7 @@ class TestEcmProtocol {
             }
             acceptThread.start()
 
-            ecm.connect("127.0.0.1", server.localPort, ECM.Protocol.STOCK)
+            ecm.connect(TransportFactory.tcp("127.0.0.1", server.localPort), ECM.Protocol.STOCK)
             acceptThread.join(2000)
             assertTrue("connect() should have succeeded", ecm.isConnected())
 
@@ -85,7 +85,7 @@ class TestEcmProtocol {
 
         FakeEcmServer { request -> ackWithBytes(ByteArray(request.getBytes()[9].toInt() and 0xff)) }.use { server ->
             val ecm = newEcm()
-            ecm.connect("127.0.0.1", server.port, ECM.Protocol.STOCK)
+            ecm.connect(TransportFactory.tcp("127.0.0.1", server.port), ECM.Protocol.STOCK)
             ecm.readEEPromPage(page)
 
             val expectedOffsets = listOf(0, 16, 32)
@@ -110,7 +110,7 @@ class TestEcmProtocol {
 
         FakeEcmServer { ackWithBytes(byteArrayOf(0)) }.use { server ->
             val ecm = newEcm()
-            ecm.connect("127.0.0.1", server.port, ECM.Protocol.STOCK)
+            ecm.connect(TransportFactory.tcp("127.0.0.1", server.port), ECM.Protocol.STOCK)
             ecm.readEEPromPage(page)
 
             // offset = PAGE_ZERO_OFFSET(0xFF) - page.length() + i + 1, dtr always 1
@@ -140,7 +140,7 @@ class TestEcmProtocol {
         FakeEcmServer { ackWithBytes(ByteArray(0)) }.use { server ->
             val ecm = ECM(StubVariableProvider(vars), NoOpBitSetProvider(), NoOpDefinitionsProvider(), null)
             ecm.setEEPROM(eeprom)
-            ecm.connect("127.0.0.1", server.port, ECM.Protocol.STOCK)
+            ecm.connect(TransportFactory.tcp("127.0.0.1", server.port), ECM.Protocol.STOCK)
 
             ecm.writeEEPromPage(page)
 
@@ -164,7 +164,7 @@ class TestEcmProtocol {
 
         FakeEcmServer { ackWithBytes(ByteArray(0)) }.use { server ->
             val ecm = newEcm()
-            ecm.connect("127.0.0.1", server.port, ECM.Protocol.STOCK)
+            ecm.connect(TransportFactory.tcp("127.0.0.1", server.port), ECM.Protocol.STOCK)
             ecm.writeEEPromPage(page)
 
             val expectedOffsets = listOf(0, 16, 32)

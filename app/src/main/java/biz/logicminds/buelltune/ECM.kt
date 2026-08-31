@@ -17,40 +17,29 @@
  */
 package biz.logicminds.buelltune
 
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.text.format.DateFormat
 import android.util.Log
-
-import com.hoho.android.usbserial.driver.UsbSerialPort
-import com.hoho.android.usbserial.util.SerialInputOutputManager
 
 import biz.logicminds.buelltune.Constants.DataSource
 import biz.logicminds.buelltune.Constants.Variables
 import biz.logicminds.buelltune.EEPROM.Page
 import biz.logicminds.buelltune.Error.ErrorType
 import biz.logicminds.buelltune.PDU.Function
+import biz.logicminds.buelltune.transport.ConnectionState
+import biz.logicminds.buelltune.transport.EcmTransport
 
 import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
-import java.io.PipedInputStream
-import java.io.PipedOutputStream
-import java.net.InetSocketAddress
-import java.net.Socket
-import java.text.ParseException
 import java.util.Calendar
 import java.util.LinkedList
-import java.util.UUID
 
-import de.kai_morich.simple_bluetooth_le_terminal.SerialListener
-import de.kai_morich.simple_bluetooth_le_terminal.SerialSocket
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 
 /**
  * This class represents the main interface to your Buell ECM. Communication
- * with the ECM may take place via a Bluetooth SPP adapter or TCP/IP. Functions
- * include:
+ * with the ECM may take place via a Bluetooth SPP adapter, BLE, USB-serial,
+ * or TCP/IP. Functions include:
  *  * Reading stored errors
  *  * Executing "Active" Tests (e.g. run the fuel pump)
  *  * reading runtime ("live") data
@@ -61,9 +50,10 @@ import de.kai_morich.simple_bluetooth_le_terminal.SerialSocket
  * & Network). Also, make sure that the adapter is set to 9600, 8N1, No
  * Handshake.
  *
- * Use [ECM.getInstance] as a starting point and call one of the connect()
- * methods for establishing a connection to the ECM. Before EEPROM data can
- * be accessed, you must call [ECM.setupEEPROM].
+ * Use [ECM.getInstance] as a starting point, build an [EcmTransport] via
+ * `TransportFactory` for the desired connection type, and call
+ * [ECM.connect] with it to establish a connection to the ECM. Before EEPROM
+ * data can be accessed, you must call [ECM.setupEEPROM].
  *
  * Dependencies are constructor-injected (KTD5, KTD7): [variableProvider] and
  * [bitsetProvider] resolve runtime/EEPROM variable definitions,
@@ -106,12 +96,7 @@ class ECM(
         override fun toString(): String = label
     }
 
-    private val mReceiveBuffer = ByteArray(256)
-    private var usbIoManager: SerialInputOutputManager? = null
-    private var connected = false
-    private var socket: Any? = null
-    private var inputStream: InputStream? = null
-    private var outputStream: OutputStream? = null
+    private var transport: EcmTransport? = null
     private var eeprom: EEPROM? = null
     private var recording = false
     private var protocol = Protocol.STOCK
@@ -119,243 +104,47 @@ class ECM(
     /** getRuntimeData()/setRuntimeData(byte[]) -- Kotlin's auto-generated accessors for this name already match. */
     var runtimeData: ByteArray? = null
 
-    // -------------------------------------------------------------------
-    // Transport layer (U7 territory). The four connect() overloads below,
-    // disconnect(), and the inputStream/outputStream/socket/usbIoManager
-    // fields above are the seam U7 extracts into EcmTransport (Bluetooth
-    // Classic, BLE, USB-serial, TCP). U6 ports this half verbatim and marks
-    // it; U7 (a later, separate unit) is what actually cuts it out from
-    // behind the protocol methods further down this file.
-    // -------------------------------------------------------------------
-
     /**
-     * Connect to given Bluetooth Classic Serial Port Profile (SPP)
+     * Connect to the ECM using the given, already target-bound [transport]
+     * (built by `TransportFactory` for the user's chosen connection type -
+     * Bluetooth Classic, BLE, USB-serial, or TCP/IP - per R7). Replaces the
+     * four legacy `connect()` overloads that used to build a raw socket
+     * inline.
      *
-     * @param bluetoothDevice the bluetooth modem
-     */
-    @Throws(IOException::class)
-    fun connect(bluetoothDevice: BluetoothDevice, protocol: Protocol) {
-        var s: BluetoothSocket? = null
-        try {
-            s = bluetoothDevice.createRfcommSocketToServiceRecord(uuid)
-            if (s != null) {
-                s.connect()
-                if (D) Log.d(TAG, "Max receive: ${s.maxReceivePacketSize}, max transmit: ${s.maxTransmitPacketSize}")
-                inputStream = s.inputStream
-                outputStream = s.outputStream
-                socket = s
-            }
-        } catch (e: IOException) {
-            Log.w(TAG, "Unable to connect. ", e)
-            if (socket != null) {
-                try {
-                    s?.close()
-                } catch (e1: IOException) {
-                }
-                socket = null
-            }
-            throw e
-        }
-        this.protocol = protocol
-        PDU.setProtocol(protocol)
-        connected = true
-    }
-
-    @Throws(IOException::class)
-    fun connect(uart: UsbSerialPort, protocol: Protocol) {
-        try {
-            val uartOutPipe = PipedOutputStream()
-            this.inputStream = PipedInputStream(uartOutPipe)
-            usbIoManager = SerialInputOutputManager(
-                uart,
-                object : SerialInputOutputManager.Listener {
-                    /**
-                     * SerialInputOutputManager Listener functions
-                     */
-                    override fun onNewData(data: ByteArray) {
-                        try {
-                            uartOutPipe.write(data)
-                        } catch (e: IOException) {
-                            Log.e(TAG, "IO Exception while trying to write to UART", e)
-                            throw RuntimeException(e)
-                        }
-                    }
-
-                    override fun onRunError(e: Exception) {
-                        Log.e(TAG, "UART read/write run error", e)
-                    }
-                },
-            )
-            this.outputStream = object : OutputStream() {
-                override fun write(i: Int) {
-                    write(byteArrayOf(i.toByte()))
-                }
-
-                override fun write(b: ByteArray) {
-                    uart.write(b, 2000)
-                }
-            }
-            usbIoManager?.start()
-        } catch (e: Exception) {
-            Log.w(TAG, "Unable to connect to USB UART", e)
-            throw e
-        }
-        this.protocol = protocol
-        PDU.setProtocol(protocol)
-        connected = true
-    }
-
-    /**
-     * Connect to BLE device
-     */
-    @Throws(IOException::class)
-    fun connect(ctx: Context, device: BluetoothDevice, protocol: Protocol) {
-        val s = SerialSocket(ctx, device)
-        val monitor = Any()
-        val out = PipedOutputStream()
-        val pipedIn = PipedInputStream(out)
-        connected = false
-
-        s.connect(object : SerialListener {
-            override fun onSerialConnect() {
-                Log.i(TAG, "BLE connected!")
-                connected = true
-                synchronized(monitor) {
-                    (monitor as java.lang.Object).notify()
-                }
-            }
-
-            override fun onSerialConnectError(e: Exception) {
-                Log.e(TAG, "BLE connect error!", e)
-                synchronized(monitor) {
-                    (monitor as java.lang.Object).notify()
-                }
-            }
-
-            override fun onSerialRead(data: ByteArray) {
-                // Log.d(TAG, "On Serial Read: " + Utils.hexdump(data));
-                try {
-                    out.write(data)
-                } catch (e: IOException) {
-                    Log.e(TAG, "out.write failed")
-                }
-            }
-
-            override fun onSerialIoError(e: Exception) {
-                Log.e(TAG, "On Serial IO Error", e)
-                try {
-                    out.close()
-                } catch (ioe: IOException) {
-                    Log.w(TAG, "Error closing BLE pipe", ioe)
-                }
-                handleConnectionLost(e)
-            }
-        })
-        synchronized(monitor) {
-            try {
-                if (D) Log.d(TAG, "Waiting for BLE connection...")
-                (monitor as java.lang.Object).wait()
-            } catch (e: InterruptedException) {
-                if (D) Log.d(TAG, "Interrupted")
-            }
-        }
-        if (!connected) {
-            throw IOException("BLE connection failed")
-        }
-
-        this.protocol = protocol
-        PDU.setProtocol(this.protocol)
-        this.inputStream = pipedIn
-        this.outputStream = object : OutputStream() {
-            override fun write(i: Int) {
-                s.write(byteArrayOf(i.toByte()))
-            }
-
-            override fun write(b: ByteArray) {
-                s.write(b)
-            }
-        }
-        this.socket = s
-    }
-
-    /**
-     * Connect via TCP
+     * Blocks the calling thread until the handshake completes or fails,
+     * bridging into [EcmTransport]'s suspend API via [runBlocking] on
+     * [Dispatchers.IO] (KTD11): `MainActivity.ConnectTask`, `FetchTask`,
+     * `BurnTask`, and the poll loop are Java `AsyncTask`s that cannot invoke
+     * a Kotlin suspend function directly, so `ECM` keeps its blocking
+     * signature rather than becoming `suspend` itself.
      *
-     * @param host host name
-     * @param port port
+     * On success, records [protocol] and calls [PDU.setProtocol] - matching
+     * where each of the four legacy overloads used to do so, and only after
+     * a successful connect, so a failed attempt never silently changes
+     * which ECM id subsequent PDUs address.
      */
-    @Throws(IOException::class)
-    fun connect(host: String, port: Int, protocol: Protocol) {
-        val s = Socket()
-        s.connect(InetSocketAddress(host, port), TCP_CONNECT_TIMEOUT)
-        inputStream = s.inputStream
-        outputStream = s.outputStream
-        socket = s
+    @Throws(Exception::class)
+    fun connect(transport: EcmTransport, protocol: Protocol) {
+        this.transport = transport
+        runBlocking(Dispatchers.IO) { transport.connect() }
         this.protocol = protocol
         PDU.setProtocol(protocol)
-        connected = true
     }
 
     /**
-     * Disconnect from the ECM
+     * Disconnect from the ECM. Safe to call even if not currently
+     * connected.
      */
     @Synchronized
     @Throws(IOException::class)
     fun disconnect() {
-        if (connected) {
-            try {
-                val sock = socket
-                if (sock != null) {
-                    try {
-                        when (sock) {
-                            is BluetoothSocket -> sock.close()
-                            is Socket -> sock.close()
-                            is SerialSocket -> sock.disconnect()
-                        }
-                    } finally {
-                        socket = null
-                    }
-                } else {
-                    // USB uart
-                    try {
-                        usbIoManager?.stop()
-                    } finally {
-                        usbIoManager = null
-                    }
-                }
-            } finally {
-                inputStream = null
-                outputStream = null
-                connected = false
-                runtimeData = null
-            }
-        }
-    }
-
-    /**
-     * Marks the connection as lost and releases any underlying transport
-     * resources. Invoked internally when I/O to the ECM fails unexpectedly
-     * (e.g. the Bluetooth link is dropped or goes out of range), as opposed
-     * to a user-initiated [disconnect].
-     */
-    @Synchronized
-    private fun handleConnectionLost(cause: Exception) {
-        if (!connected) {
-            return
-        }
-        Log.w(TAG, "Connection to ECM lost: $cause", cause)
+        val active = transport ?: return
         try {
-            disconnect()
-        } catch (ioe: IOException) {
-            Log.w(TAG, "Error releasing broken connection", ioe)
+            runBlocking(Dispatchers.IO) { active.disconnect() }
+        } finally {
+            runtimeData = null
         }
     }
-
-    // -------------------------------------------------------------------
-    // Protocol layer. Stays in ECM after U7 cuts the transport seam above
-    // out into EcmTransport; only the streams these methods read/write move
-    // behind that interface.
-    // -------------------------------------------------------------------
 
     /**
      * Send a protocol data unit (PDU) to the ECM and return the ECMs response
@@ -365,56 +154,27 @@ class ECM(
     private fun sendPDU(pdu: PDU): PDU {
         try {
             if (D) Log.d(TAG, "Sending: $pdu")
-            val out = outputStream ?: throw IOException("OutputStream to RFCOMM not available.")
-            val bytes = pdu.getBytes()
-            out.write(bytes)
-            // Wait for response
-            val ret = receivePDU()
+            val active = transport ?: throw IOException("Not connected to ECM.")
+            val ret = runBlocking(Dispatchers.IO) { active.transact(pdu) }
             if (!ret.isResponse()) {
                 throw IOException("No valid response from ECM (wrong Protocol?)")
             }
             if (!ret.isACK()) {
                 throw IOException("Request not acknowledged by ECM (error code ${ret.getErrorIndicator()}).")
             }
+            if (D) Log.d(TAG, "Received: $ret")
             return ret
         } catch (ioe: IOException) {
             Log.e(TAG, "IO Exception sending PDU", ioe)
-            handleConnectionLost(ioe)
+            // The transport has already released its resources and moved
+            // itself to Failed (KTD11) if this was a real link failure; ECM
+            // only needs to drop its own now-stale runtime-data cache, the
+            // f3337a1 behavior this mirrors at the protocol layer.
+            runtimeData = null
             throw ioe
         } catch (rte: RuntimeException) {
             Log.e(TAG, "Runtime Exception sending PDU", rte)
             throw rte
-        }
-    }
-
-    @Throws(IOException::class)
-    fun receivePDU(): PDU {
-        try {
-            read(mReceiveBuffer, 0, 6, DEFAULT_TIMEOUT)
-            if (mReceiveBuffer[0] != PDU.SOH && mReceiveBuffer[4] != PDU.EOH && mReceiveBuffer[5] != PDU.SOT) {
-                throw IOException("Invalid Header received.")
-            }
-            val len = mReceiveBuffer[3].toInt() and 0xff
-            // Log.d(TAG, "Start of PDU: " + Utils.hexdump(mReceiveBuffer, 0, 6));
-            read(mReceiveBuffer, 6, len + 1, DEFAULT_TIMEOUT)
-            val response: PDU
-            try {
-                response = PDU(mReceiveBuffer, len + 7)
-            } catch (e: ParseException) {
-                throw IOException("Unable to parse incoming PDU. " + e.localizedMessage)
-            }
-            if (D) Log.d(TAG, "Received: $response")
-            return response
-        } catch (ioe: IOException) {
-            Log.e(TAG, "I/O Exception receiving PDU. " + ioe.message)
-            // Drain receive buffer, we might be out-of-sync
-            try {
-                while (inputStream!!.available() > 0) {
-                    inputStream!!.read()
-                }
-            } catch (e: IOException) {
-            }
-            throw ioe
         }
     }
 
@@ -567,45 +327,10 @@ class ECM(
         return data
     }
 
-    @Throws(IOException::class)
-    private fun read(buffer: ByteArray, offset: Int, len: Int, timeoutMs: Int): Int {
-        if (offset + len >= buffer.size) {
-            throw IOException("${offset + len}: Array index out of bounds.")
-        }
-        var timeout = timeoutMs
-        var r = 0
-        while (r < len && timeout > 0) {
-            if (inputStream!!.available() > 0) {
-                do {
-                    val toRead = minOf(len - r, inputStream!!.available())
-                    try {
-                        val i = inputStream!!.read(buffer, r + offset, toRead)
-                        if (i == -1) {
-                            throw IOException("EOF while reading $toRead/$len bytes at offset ${r + offset}")
-                        }
-                        r += i
-                    } catch (rte: RuntimeException) {
-                        throw IOException("Runtime Exception while reading $toRead bytes at offset ${r + offset}")
-                    }
-                } while (r < len && inputStream!!.available() > 0)
-            } else {
-                try {
-                    Thread.sleep(10)
-                    timeout -= 10
-                } catch (e: InterruptedException) {
-                }
-            }
-        }
-        if (r != len) {
-            throw IOException("Timeout reading $r from $len bytes.")
-        }
-        return r
-    }
-
     /**
      * Indicates if a connection to the underlying ECM is established.
      */
-    fun isConnected(): Boolean = connected
+    fun isConnected(): Boolean = transport?.state?.value is ConnectionState.Connected
 
     /**
      * Returns a reference to the ECMs EEPROM contents.
@@ -801,10 +526,7 @@ class ECM(
 
     companion object {
         private const val D = false
-        private const val DEFAULT_TIMEOUT = 1000
-        private const val TCP_CONNECT_TIMEOUT = 5000
         private const val TAG = "ECM"
-        private val uuid: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
         private const val UNKNOWN = "N/A"
         private const val PAGE_ZERO_OFFSET = 0xFF // Page 0 always starts at 0xFF
 
