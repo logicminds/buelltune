@@ -18,6 +18,8 @@
 package biz.logicminds.buelltune.transport
 
 import android.bluetooth.BluetoothDevice
+import android.content.Context
+import de.kai_morich.simple_bluetooth_le_terminal.SerialSocket
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -68,5 +70,15 @@ object TransportFactory {
             runCatching { socket.close() }
             throw e
         }
+    }
+
+    /**
+     * BLE connection to [device] via the vendored `SerialSocket`/
+     * `SerialListener` pair (U13), wrapped behind [BleSerialSocket] so
+     * [BleTransport] never depends on `SerialSocket` directly.
+     */
+    @JvmStatic
+    fun ble(context: Context, device: BluetoothDevice): EcmTransport = BleTransport {
+        RealBleSerialSocket(SerialSocket(context, device))
     }
 }
