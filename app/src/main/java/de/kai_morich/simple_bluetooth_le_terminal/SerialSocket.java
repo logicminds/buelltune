@@ -37,8 +37,8 @@ import android.content.IntentFilter;
 import android.os.Build;
 import android.util.Log;
 
-import org.ecmdroid.Constants;
-import org.ecmdroid.R;
+import biz.logicminds.buelltune.Constants;
+import biz.logicminds.buelltune.R;
 
 import java.io.IOException;
 import java.util.ArrayList;

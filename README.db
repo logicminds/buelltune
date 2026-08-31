@@ -9,16 +9,16 @@ to sqlite3:
   $ cat <name-of-sql>.sql | mysql -u<user> -p<password> <name-of-db>
 
 2. Convert the MySQL Database into a SQLite script:
- $ sh scripts/mysql2sqlite.sh -u<user> -p<password> <name-of-db> > ecmdroid.sq3
+ $ sh scripts/mysql2sqlite.sh -u<user> -p<password> <name-of-db> > buelltune.sq3
 
 3. Remove all column COMMENTs from the file generated above (not supported
    by SQLite3)
 
 4. Create a new sqlite database
-  $ sqlite3 assets/ecmdroid.db < ecmdroid.sq3
+  $ sqlite3 assets/buelltune.db < buelltune.sq3
 
 5. Compress the resulting db file with gzip, replacing the current version
-  $ gzip -f assets/ecmdroid.db
+  $ gzip -f assets/buelltune.db
 
-6. Increase the DB version field in class org.ecmdroid.DBHelper
-
+6. Increase the DB version field in class biz.logicminds.buelltune.DBHelper
+7. Set `PRAGMA user_version = 1` on the built database before gzipping it — Room's `createFromAsset` (introduced once the domain layer moves to Room) validates the asset's `user_version` against its `@Database(version = N)` declaration, so this step must not be dropped on a future regeneration.

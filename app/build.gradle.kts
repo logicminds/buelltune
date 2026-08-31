@@ -23,7 +23,7 @@ android {
     }
     defaultConfig {
         compileSdk = 34
-        applicationId = "org.ecmdroid"
+        applicationId = "biz.logicminds.buelltune"
         versionCode = 28
         versionName = "0.99.8"
         minSdk = 26
@@ -46,7 +46,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-    namespace = "org.ecmdroid"
+    namespace = "biz.logicminds.buelltune"
     buildFeatures {
         buildConfig = true
     }
