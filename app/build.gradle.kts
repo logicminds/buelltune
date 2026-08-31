@@ -3,6 +3,8 @@ import java.io.FileInputStream
 
 plugins {
     alias(libs.plugins.androidApplication)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.composeCompiler)
 }
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -43,15 +45,36 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     namespace = "biz.logicminds.buelltune"
     buildFeatures {
         buildConfig = true
+        compose = true
     }
     compileSdk = 34
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+        }
+    }
+    sourceSets {
+        getByName("main") {
+            kotlin.srcDir("src/main/java")
+        }
+        getByName("test") {
+            kotlin.srcDir("src/test/java")
+            java.srcDir("src/sharedTest/java")
+            resources.srcDir("src/androidTest/resources")
+        }
+        getByName("androidTest") {
+            kotlin.srcDir("src/androidTest/java")
+            java.srcDir("src/sharedTest/java")
+        }
+    }
 }
+
 
 dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
