@@ -54,9 +54,15 @@ public class ActiveTestsFragment extends ListFragment implements OnClickListener
 			Function.Shift_Light
 	};
 
-	private ECM ecm = ECM.getInstance(getActivity());
+	private ECM ecm;
 	private Function selectedFunction;
 	private FunctionTask functionTask;
+
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		ecm = ECM.getInstance(getActivity());
+	}
 
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {

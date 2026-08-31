@@ -42,7 +42,7 @@ import biz.logicminds.buelltune.activities.MainActivity;
 public class MainFragment extends Fragment {
 	private static final String TAG = "MAIN";
 
-	private ECM ecm = ECM.getInstance(this.getActivity());
+	private ECM ecm;
 	private Spinner protocolSpinner;
 	private SharedPreferences prefs;
 
@@ -52,6 +52,7 @@ public class MainFragment extends Fragment {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		ecm = ECM.getInstance(getActivity());
 		prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
 
 		if (getArguments() != null) {

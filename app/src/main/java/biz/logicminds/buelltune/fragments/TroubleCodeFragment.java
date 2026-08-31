@@ -41,7 +41,13 @@ import java.util.Collection;
 public class TroubleCodeFragment extends Fragment implements OnClickListener {
 	private Collection<Error> currentErrors;
 	private Collection<Error> storedErrors;
-	private ECM ecm = ECM.getInstance(this.getActivity());
+	private ECM ecm;
+
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		ecm = ECM.getInstance(getActivity());
+	}
 
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container,

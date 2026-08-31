@@ -55,8 +55,8 @@ import java.util.regex.Matcher;
 
 public class SetupFragment extends PreferenceFragment implements OnPreferenceChangeListener {
 	private static final String TAG = "SETUP";
-	private ECM ecm = ECM.getInstance(getActivity());
-	private VariableProvider provider = VariableProvider.getInstance(getActivity());
+	private ECM ecm;
+	private VariableProvider provider;
 	private HashMap<Preference, Object> prefmap;
 	private Button saveButton;
 
@@ -64,6 +64,8 @@ public class SetupFragment extends PreferenceFragment implements OnPreferenceCha
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		ecm = ECM.getInstance(getActivity());
+		provider = VariableProvider.getInstance(getActivity());
 		addPreferencesFromResource(R.xml.ecm_setup);
 	}
 

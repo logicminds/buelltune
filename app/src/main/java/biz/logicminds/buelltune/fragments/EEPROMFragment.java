@@ -69,7 +69,7 @@ public class EEPROMFragment extends Fragment implements CellEditorDialogListener
 	@SuppressWarnings("unused")
 	private static final String TAG = "EEPROM";
 
-	private ECM ecm = ECM.getInstance(getActivity());
+	private ECM ecm;
 	private TextView offsetHex, offsetDec;
 	private TextView byteValHex, byteValDec;
 	private TextView hiShortHex, hiShortDec;
@@ -80,6 +80,7 @@ public class EEPROMFragment extends Fragment implements CellEditorDialogListener
 	@Override
 	public void onCreate(Bundle args) {
 		super.onCreate(args);
+		ecm = ECM.getInstance(getActivity());
 		setHasOptionsMenu(true);
 	}
 

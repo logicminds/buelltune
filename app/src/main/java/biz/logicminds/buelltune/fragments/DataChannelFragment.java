@@ -60,8 +60,8 @@ public class DataChannelFragment extends Fragment {
 	};
 	private static Variable[] channels = new Variable[5];
 
-	private ECM ecm = ECM.getInstance(getActivity());
-	private VariableProvider provider = VariableProvider.getInstance(getActivity());
+	private ECM ecm;
+	private VariableProvider provider;
 	private ToggleButton toggleButton;
 	private DataChannelAdapter dataChannelAdapter;
 	private EcmService ecmDroidService;
@@ -141,6 +141,8 @@ public class DataChannelFragment extends Fragment {
 	public void onCreate(Bundle savedInstanceState) {
 		Log.d(TAG, "onCreate");
 		super.onCreate(savedInstanceState);
+		ecm = ECM.getInstance(getActivity());
+		provider = VariableProvider.getInstance(getActivity());
 		getActivity().bindService(new Intent(getActivity(), EcmService.class), serviceConnection, Context.BIND_AUTO_CREATE);
 
 		if (!Utils.isEmptyString(ecm.getId())) {

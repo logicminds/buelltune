@@ -76,7 +76,7 @@ public class LogFragment extends Fragment implements OnClickListener {
 	private Button recordButton;
 	private TextView logStatus;
 	private TextView tpsValue, rpmValue, cltValue;
-	private ECM ecm = ECM.getInstance(getActivity());
+	private ECM ecm;
 	private EcmService ecmDroidService;
 	private static DocumentFile docRoot;
 	private static ParcelFileDescriptor logFile;
@@ -155,6 +155,7 @@ public class LogFragment extends Fragment implements OnClickListener {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		ecm = ECM.getInstance(getActivity());
 		getActivity().bindService(new Intent(getActivity(), EcmService.class), serviceConnection, Context.BIND_AUTO_CREATE);
 	}
 

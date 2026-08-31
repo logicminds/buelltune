@@ -103,7 +103,7 @@ public class MainActivity extends AppCompatActivity
 
 	private int currentFragment = R.id.nav_info;
 
-	private ECM ecm = ECM.getInstance(this);
+	private ECM ecm;
 	protected EcmService ecmDroidService;
 	private FloatingActionButton fab;
 
@@ -138,6 +138,7 @@ public class MainActivity extends AppCompatActivity
 	protected void onCreate(Bundle savedInstanceState) {
 		Log.d(TAG, "onCreate(" + savedInstanceState + "," + getIntent().getExtras() + ")");
 		super.onCreate(savedInstanceState);
+		ecm = ECM.getInstance(this);
 		if (savedInstanceState != null) {
 			currentFragment = savedInstanceState.getInt(CURRENT_FRAGMENT, R.id.nav_info);
 		} else if (getIntent().getExtras() != null) {
