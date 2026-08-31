@@ -20,8 +20,25 @@ package biz.logicminds.buelltune;
 import android.app.Application;
 
 public class EcmDroidApp extends Application {
+    private AppContainer appContainer;
+
     @Override
     public void onCreate() {
         super.onCreate();
+        appContainer = new AppContainer(this);
+    }
+
+    /**
+     * Dependency-injection root (KTD5). Lazily built if accessed before
+     * {@link #onCreate()} has run, which does not happen in practice since
+     * Android always calls onCreate() before any other component - kept
+     * defensive so a future test harness constructing this Application
+     * directly cannot NPE on a null container.
+     */
+    public AppContainer getAppContainer() {
+        if (appContainer == null) {
+            appContainer = new AppContainer(this);
+        }
+        return appContainer;
     }
 }

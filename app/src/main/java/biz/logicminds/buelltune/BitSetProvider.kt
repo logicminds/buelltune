@@ -15,33 +15,25 @@
  You should have received a copy of the GNU General Public License
  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
-package biz.logicminds.buelltune;
+package biz.logicminds.buelltune
 
-import android.content.Context;
-import android.util.Log;
-
-import biz.logicminds.buelltune.Constants.DataSource;
+import android.content.Context
+import biz.logicminds.buelltune.Constants.DataSource
 
 /**
  * Provider for Runtime- and EEPROM BitSet definitions.
  */
-public abstract class BitSetProvider {
+abstract class BitSetProvider {
 
-	protected static final String TAG = "BitSetProvider";
-	private static BitSetProvider bitsetProvider;
+    abstract fun getBitSet(ecmId: String, name: String, source: DataSource): BitSet?
 
-	public abstract BitSet getBitSet(String ecm_id, String name, DataSource source);
-
-	public static synchronized BitSetProvider getInstance(Context ctx) {
-		if (bitsetProvider == null) {
-			try {
-				long now = System.currentTimeMillis();
-				bitsetProvider = new DatabaseBitSetProvider(ctx);
-				Log.d(TAG, "BitSetParser took " + (System.currentTimeMillis() - now + "ms."));
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-		}
-		return bitsetProvider;
-	}
+    companion object {
+        /**
+         * Legacy singleton facade (KTD5): resolves the process-wide
+         * [AppContainer] from [ctx] instead of building/caching its own
+         * `@SuppressLint("StaticFieldLeak")` instance.
+         */
+        @JvmStatic
+        fun getInstance(ctx: Context): BitSetProvider = AppContainer.from(ctx).bitSetProvider
+    }
 }
