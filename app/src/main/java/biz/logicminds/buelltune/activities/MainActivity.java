@@ -529,7 +529,7 @@ public class MainActivity extends AppCompatActivity
 						transport = TransportFactory.bluetoothClassic(btDevice);
 					}
 				} else if (uart != null) {
-					throw new IOException("USB-serial transport is not yet available.");
+					transport = TransportFactory.usbSerial(uart);
 				} else {
 					transport = TransportFactory.tcp(host, port);
 				}

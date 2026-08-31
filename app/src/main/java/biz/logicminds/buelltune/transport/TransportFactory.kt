@@ -19,8 +19,9 @@ package biz.logicminds.buelltune.transport
 
 import android.bluetooth.BluetoothDevice
 import android.content.Context
+import com.hoho.android.usbserial.driver.UsbSerialPort
+import com.hoho.android.usbserial.util.SerialInputOutputManager
 import de.kai_morich.simple_bluetooth_le_terminal.SerialSocket
-import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 
@@ -31,11 +32,8 @@ import java.net.Socket
  * itself, then hands the result to `ECM.connect(transport, protocol)`
  * (KTD4's one permitted legacy edit for this unit).
  *
- * Bluetooth Classic and TCP are the two connection types this unit builds.
- * BLE and USB-serial land in U13/U14 behind the same [EcmTransport]
- * contract; `MainActivity`'s BLE/USB-serial device pickers still exist, but
- * `ConnectTask` fails those two paths explicitly with a clear
- * "not yet available" [IOException] until those units land.
+ * All four connection types - Bluetooth Classic, TCP, BLE (U13), and
+ * USB-serial (U14) - are landed behind the same [EcmTransport] contract.
  */
 object TransportFactory {
     /**
@@ -80,5 +78,28 @@ object TransportFactory {
     @JvmStatic
     fun ble(context: Context, device: BluetoothDevice): EcmTransport = BleTransport {
         RealBleSerialSocket(SerialSocket(context, device))
+    }
+
+    /**
+     * USB-serial connection over [port], which `MainActivity.findCOMDevice()`
+     * has already opened and baud-configured (9600 for
+     * [biz.logicminds.buelltune.ECM.Protocol.STOCK], 19200 for
+     * `FACTORY_RACE` - the existing, untouched selection in that method,
+     * KTD4) before ever reaching this factory. [SerialInputOutputManager]
+     * drives reads only; writes go straight to [UsbSerialPort.write],
+     * matching the legacy `ECM.connect(UsbSerialPort, Protocol)`
+     * ([UsbSerialTransport.WRITE_TIMEOUT_MS]).
+     */
+    @JvmStatic
+    fun usbSerial(port: UsbSerialPort): EcmTransport = UsbSerialTransport { listener ->
+        val ioManager = SerialInputOutputManager(port, listener)
+        ioManager.start()
+        object : UsbSerialConnection {
+            override fun write(data: ByteArray, timeoutMs: Int) = port.write(data, timeoutMs)
+            override fun close() {
+                ioManager.stop()
+                runCatching { port.close() }
+            }
+        }
     }
 }
