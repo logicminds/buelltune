@@ -436,10 +436,14 @@ class ECM(
      * @param offset the offset
      * @return a Variable or null if not found
      */
-    fun getEEPROMValueNearOffset(offset: Int): Variable? = variableProvider.getNearestEEPROMVariable(getId()!!, offset)
+    fun getEEPROMValueNearOffset(offset: Int): Variable? {
+        val id = getId() ?: return null
+        return variableProvider.getNearestEEPROMVariable(id, offset)
+    }
 
     fun getEEPROMBit(name: String, bit: Int): Bit? {
-        val bitset = bitsetProvider.getBitSet(getId()!!, name, DataSource.EEPROM)
+        val id = getId() ?: return null
+        val bitset = bitsetProvider.getBitSet(id, name, DataSource.EEPROM)
         if (bitset != null) {
             val b = bitset.getBit(bit)!!
             if (b.offset < 0 && !eeprom!!.hasPageZero()) {

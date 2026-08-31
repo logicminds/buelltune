@@ -55,8 +55,9 @@ public class DataChannelAdapter extends ArrayAdapter<Variable> {
 		this.items = items;
 		inflater = (LayoutInflater) ctx.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 		variableProvider = VariableProvider.getInstance(ctx);
-		variables = new LinkedList<String>(variableProvider.getScalarRtVariableNames(ecm.getId()));
-		variables.addAll(variableProvider.getBitfieldRtVariableNames(ecm.getId()));
+		String ecmId = ecm.getId() != null ? ecm.getId() : "";
+		variables = new LinkedList<String>(variableProvider.getScalarRtVariableNames(ecmId));
+		variables.addAll(variableProvider.getBitfieldRtVariableNames(ecmId));
 		variables.add(0, NO_SELECTION);
 		this.ecm = ecm;
 	}
