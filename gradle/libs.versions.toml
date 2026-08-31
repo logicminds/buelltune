@@ -28,6 +28,7 @@ mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mo
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitExt" }
 test-rules = { group = "androidx.test", name = "rules", version.ref = "testRules" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+espresso-intents = { group = "androidx.test.espresso", name = "espresso-intents", version.ref = "espressoCore" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
