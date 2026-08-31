@@ -241,7 +241,6 @@
 	<string name="keep_screen_on_summary">Keep Screen on while recording a log</string>
 	<string name="keep_screen_on_title">Keep Screen On</string>
 	<string name="ecm_version">ECM Version:</string>
-	<string name="update_db">Updating database...</string>
     <string name="pairing_request"><![CDATA[PAIRING requested\n-> Perform pairing steps. Connect again]]></string>
     <string name="tcp_settings">TCP/IP Settings</string>
     <string name="connect_disconnect">Connect/Disconnect</string>

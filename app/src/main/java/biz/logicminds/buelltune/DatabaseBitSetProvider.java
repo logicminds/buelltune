@@ -18,24 +18,28 @@
 package biz.logicminds.buelltune;
 
 import android.content.Context;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 
 import biz.logicminds.buelltune.Constants.DataSource;
+import biz.logicminds.buelltune.data.BitSetRow;
+import biz.logicminds.buelltune.data.EcmDefinitionsDatabase;
 
 import java.util.HashMap;
 
 /**
  * Create a BitSet based on definitions in the built-in database.
+ * <p>
+ * Backed by Room (R6, KTD3) instead of the retired {@code DBHelper}. The
+ * {@code rtoffsets}/{@code eeoffsets} table switch driven by {@link
+ * DataSource} is preserved by calling the matching DAO.
  */
 public class DatabaseBitSetProvider extends BitSetProvider {
 
-	private DBHelper dbHelper;
+	private final EcmDefinitionsDatabase db;
 	private HashMap<String, BitSet> cache;
 	private String current_ecm = null;
 
 	public DatabaseBitSetProvider(Context ctx) {
-		dbHelper = new DBHelper(ctx);
+		db = EcmDefinitionsDatabase.getInstance(ctx);
 		cache = new HashMap<String, BitSet>();
 	}
 
@@ -49,48 +53,43 @@ public class DatabaseBitSetProvider extends BitSetProvider {
 		if (cache.containsKey(name)) {
 			return ret;
 		}
-		SQLiteDatabase db = dbHelper.getReadableDatabase();
-		String offset_table = (source == DataSource.EEPROM ? "eeoffsets" : "rtoffsets");
-		try {
-			String query = "SELECT * FROM " + offset_table + " AS offsets, bits, eeprom" +
-					" WHERE offsets.varname = '" + name + "'" +
-					" AND bits.varname = offsets.varname" +
-					" AND eeprom.name = '" + ecm_id + "'" +
-					" AND offsets.category = eeprom.category";
-			if (source == DataSource.RUNTIME_DATA) {
-				query += " AND offsets.secret = 0";
-			}
-			// Log.d(TAG, "Query: " + query);
-			Cursor c = db.rawQuery(query, null);
-			if (c.moveToFirst()) {
-				String setname = c.getString(c.getColumnIndex("varname"));
-				String label = c.getString(c.getColumnIndex("name"));
-				int offset = c.getInt(c.getColumnIndex("offset"));
-				ret = new BitSet(setname, label, offset);
-				for (int i = 1; i <= 8; i++) {
-					String bitname = c.getString(c.getColumnIndex("bitname" + i));
-					String bitdesc = c.getString(c.getColumnIndex("bit" + i));
-					if (Utils.isEmptyString(bitname) && Utils.isEmptyString(bitdesc)) {
-						continue;
-					}
-					if (Utils.isEmptyString(bitname)) {
-						bitname = setname + "." + i;
-					}
-					Bit bit = new Bit();
-					bit.setName(bitname);
-					bit.setBitNr(i - 1);
-					bit.setByteNr(c.getInt(c.getColumnIndex("byte")));
-					bit.setOffset(offset);
-					bit.setType(ECM.Type.getType(c.getString(c.getColumnIndex("type"))));
-					bit.setRemark(bitdesc);
-					bit.setCode(c.getString(c.getColumnIndex("dtc" + i)));
-					// Log.d(TAG, bit.toString());
-					ret.add(bit);
+		BitSetRow row = (source == DataSource.EEPROM)
+				? db.eeoffsetsDao().getBitSetRow(ecm_id, name)
+				: db.rtoffsetsDao().getBitSetRow(ecm_id, name);
+		if (row != null) {
+			ret = new BitSet(row.getVarname(), row.getName(), row.getOffset());
+			String[] bitnames = {
+					row.getBitname1(), row.getBitname2(), row.getBitname3(), row.getBitname4(),
+					row.getBitname5(), row.getBitname6(), row.getBitname7(), row.getBitname8()
+			};
+			String[] bitdescs = {
+					row.getBit1(), row.getBit2(), row.getBit3(), row.getBit4(),
+					row.getBit5(), row.getBit6(), row.getBit7(), row.getBit8()
+			};
+			String[] dtcs = {
+					row.getDtc1(), row.getDtc2(), row.getDtc3(), row.getDtc4(),
+					row.getDtc5(), row.getDtc6(), row.getDtc7(), row.getDtc8()
+			};
+			Integer byteNr = row.getByte();
+			for (int i = 1; i <= 8; i++) {
+				String bitname = bitnames[i - 1];
+				String bitdesc = bitdescs[i - 1];
+				if (Utils.isEmptyString(bitname) && Utils.isEmptyString(bitdesc)) {
+					continue;
 				}
+				if (Utils.isEmptyString(bitname)) {
+					bitname = row.getVarname() + "." + i;
+				}
+				Bit bit = new Bit();
+				bit.setName(bitname);
+				bit.setBitNr(i - 1);
+				bit.setByteNr(byteNr == null ? 0 : byteNr);
+				bit.setOffset(row.getOffset());
+				bit.setType(ECM.Type.getType(row.getType()));
+				bit.setRemark(bitdesc);
+				bit.setCode(dtcs[i - 1]);
+				ret.add(bit);
 			}
-			c.close();
-		} finally {
-			db.close();
 		}
 		cache.put(name, ret);
 		return ret;

@@ -20,5 +20,22 @@ to sqlite3:
 5. Compress the resulting db file with gzip, replacing the current version
   $ gzip -f assets/buelltune.db
 
-6. Increase the DB version field in class biz.logicminds.buelltune.DBHelper
-7. Set `PRAGMA user_version = 1` on the built database before gzipping it — Room's `createFromAsset` (introduced once the domain layer moves to Room) validates the asset's `user_version` against its `@Database(version = N)` declaration, so this step must not be dropped on a future regeneration.
+6. Bump `version` in `@Database(...)` on `EcmDefinitionsDatabase`
+  (`app/src/main/java/biz/logicminds/buelltune/data/EcmDefinitionsDatabase.kt`)
+  whenever the entities change or the database content is regenerated.
+7. Set `PRAGMA user_version = N` on the built database, matching the version
+   from step 6, before gzipping it:
+  $ sqlite3 assets/buelltune.db 'PRAGMA user_version = N;'
+
+  Room opens this asset via `createFromAsset("buelltune.db")` (the filename
+  has no `.gz` - aapt strips that extension when packaging the asset) instead
+  of creating the database itself, then compares the copied file's `PRAGMA
+  user_version` against `@Database(version = N)`. A mismatched or unset
+  (default 0) `user_version` sends Room down an `onCreate`/migration path
+  against tables that already exist; `EcmDefinitionsDatabase` declares no
+  `Migration`s - this is a read-only bundled reference file, so a schema or
+  content change ships an entirely new asset rather than migrating an
+  existing install in place - so a mismatch fails hard with
+  `IllegalStateException: A migration from <asset version> to <N> was
+  required but not found` the first time any provider queries the database,
+  i.e. on first app launch after the update installs.

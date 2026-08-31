@@ -18,12 +18,12 @@
 package biz.logicminds.buelltune;
 
 import android.content.Context;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.util.Log;
 
-import biz.logicminds.buelltune.Constants.DataSource;
 import biz.logicminds.buelltune.Variable.DataType;
+import biz.logicminds.buelltune.data.BitNamesRow;
+import biz.logicminds.buelltune.data.EcmDefinitionsDatabase;
+import biz.logicminds.buelltune.data.EeVariableRow;
+import biz.logicminds.buelltune.data.RtVariableRow;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -33,16 +33,19 @@ import java.util.regex.Matcher;
 
 /**
  * Create a Variable based on definitions in the built-in database.
+ * <p>
+ * Backed by Room (R6, KTD3) instead of the retired {@code DBHelper}. The
+ * cache-then-DAO shape is unchanged: the {@link HashMap} caches still sit in
+ * front of every lookup because these run on every poll cycle.
  */
 public class DatabaseVariableProvider extends VariableProvider {
 
-	private DBHelper dbHelper;
+	private final EcmDefinitionsDatabase db;
 	private HashMap<String, Variable> cache = new HashMap<String, Variable>();
 	private String current_ecm = null;
-	private static final boolean D = false;
 
 	public DatabaseVariableProvider(Context ctx) {
-		dbHelper = new DBHelper(ctx);
+		db = EcmDefinitionsDatabase.getInstance(ctx);
 	}
 
 	@Override
@@ -61,29 +64,8 @@ public class DatabaseVariableProvider extends VariableProvider {
 	}
 
 	private Collection<String> getRtVariableNames(String ecm, DataType type) {
-		LinkedList<String> ret = new LinkedList<String>();
-		SQLiteDatabase db = dbHelper.getReadableDatabase();
-		try {
-			String query = "SELECT names.origname FROM names, rtoffsets, eeprom " +
-					" WHERE eeprom.name = '" + ecm + "'" +
-					" AND rtoffsets.category = eeprom.category" +
-					" AND names.varname = rtoffsets.varname" +
-					" AND rtoffsets.secret = 0 " +
-					" AND names.secret = 0";
-			if (type != null) {
-				query += " AND UPPER(rtoffsets.type) = '" + type.toString().toUpperCase(Locale.ENGLISH) + "'";
-			}
-			query += " ORDER BY UPPER(names.origname)";
-			if (D) Log.d(TAG, "Query: " + query);
-			Cursor cursor = db.rawQuery(query, null);
-			while (cursor.moveToNext()) {
-				ret.add(cursor.getString(0));
-			}
-			cursor.close();
-		} finally {
-			db.close();
-		}
-		return ret;
+		String typeUpper = type == null ? null : type.toString().toUpperCase(Locale.ENGLISH);
+		return new LinkedList<String>(db.rtoffsetsDao().getRtVariableNames(ecm, typeUpper));
 	}
 
 	@Override
@@ -97,24 +79,7 @@ public class DatabaseVariableProvider extends VariableProvider {
 		if (cache.containsKey(key)) {
 			return ret;
 		}
-		SQLiteDatabase db = dbHelper.getReadableDatabase();
-		try {
-			String query = "SELECT rtoffsets.*, names.*, eeprom.type as ecm_type FROM rtoffsets, eeprom, names " +
-					" WHERE eeprom.name = '" + ecm + "' AND names.origname = '" + name + "'" +
-					" AND rtoffsets.category = eeprom.category" +
-					" AND names.varname = rtoffsets.varname" +
-					" AND names.secret = 0" +
-					" AND rtoffsets.secret = 0";
-			if (D) Log.d(TAG, "Query: " + query);
-			// TODO: Use selection Args?
-			Cursor cursor = db.rawQuery(query, null);
-			if (cursor.moveToFirst()) {
-				ret = convert(cursor, DataSource.RUNTIME_DATA);
-			}
-			cursor.close();
-		} finally {
-			db.close();
-		}
+		ret = convert(db.rtoffsetsDao().getRtVariable(ecm, name));
 		cache.put(key, ret);
 		return ret;
 	}
@@ -133,19 +98,7 @@ public class DatabaseVariableProvider extends VariableProvider {
 		if (cache.containsKey(key)) {
 			return ret;
 		}
-		SQLiteDatabase db = dbHelper.getReadableDatabase();
-		try {
-			String query = "SELECT eeoffsets.*, names.*, eeprom.type as ecm_type FROM eeoffsets, eeprom, names " +
-					" WHERE eeprom.name = '" + ecm + "' AND names.varname = '" + name + "'" +
-					" AND eeoffsets.category = eeprom.category" +
-					" AND eeoffsets.varname = names.varname";
-			if (D) Log.d(TAG, query);
-			Cursor cursor = db.rawQuery(query, null);
-			ret = convert(cursor, DataSource.EEPROM);
-			cursor.close();
-		} finally {
-			db.close();
-		}
+		ret = convert(db.eeoffsetsDao().getEeVariable(ecm, name));
 		cache.put(key, ret);
 		return ret;
 	}
@@ -155,22 +108,7 @@ public class DatabaseVariableProvider extends VariableProvider {
 		if (ecm == null) {
 			return null;
 		}
-		SQLiteDatabase db = dbHelper.getReadableDatabase();
-		Variable ret = null;
-		try {
-			String query = "SELECT eeoffsets.*, names.*, eeprom.type as ecm_type FROM eeoffsets, eeprom, names " +
-					" WHERE eeprom.name = '" + ecm + "' AND offset <= " + offset +
-					" AND eeoffsets.category = eeprom.category" +
-					" AND eeoffsets.varname = names.varname" +
-					" ORDER BY offset DESC LIMIT 1";
-			if (D) Log.d(TAG, query);
-			Cursor cursor = db.rawQuery(query, null);
-			ret = convert(cursor, DataSource.EEPROM);
-			cursor.close();
-		} finally {
-			db.close();
-		}
-		return ret;
+		return convert(db.eeoffsetsDao().getNearestEeVariable(ecm, offset));
 	}
 
 	@Override
@@ -181,80 +119,110 @@ public class DatabaseVariableProvider extends VariableProvider {
 			int bit = Integer.parseInt(matcher.group(2).split(",")[0]);
 			return getName(name, bit);
 		}
-		String result = null;
-		SQLiteDatabase db = dbHelper.getReadableDatabase();
-		try {
-			String query = "SELECT name FROM names WHERE varname = '" + varname + "' LIMIT 1";
-			Cursor c = db.rawQuery(query, null);
-			if (c.moveToFirst()) {
-				result = c.getString(0);
-			}
-			c.close();
-		} finally {
-			db.close();
-		}
-		return result;
+		return db.namesDao().getName(varname);
 	}
 
 	@Override
 	public String getName(String varname, int bit) {
-
 		if (bit < 0 || bit > 7) {
 			return null;
 		}
-		String result = null;
-		SQLiteDatabase db = dbHelper.getReadableDatabase();
-		try {
-			String query = "SELECT bitname" + (bit + 1) + " FROM bits WHERE varname = '" + varname + "' LIMIT 1";
-			Cursor c = db.rawQuery(query, null);
-			if (c.moveToFirst()) {
-				result = c.getString(0);
-			}
-			c.close();
-		} finally {
-			db.close();
+		BitNamesRow row = db.bitsDao().getBitNames(varname);
+		if (row == null) {
+			return null;
 		}
-		return result;
+		switch (bit) {
+			case 0: return row.getBitname1();
+			case 1: return row.getBitname2();
+			case 2: return row.getBitname3();
+			case 3: return row.getBitname4();
+			case 4: return row.getBitname5();
+			case 5: return row.getBitname6();
+			case 6: return row.getBitname7();
+			default: return row.getBitname8();
+		}
 	}
 
-	private Variable convert(Cursor cursor, DataSource runtimeData) {
-		Variable ret = null;
-		if (cursor.moveToFirst()) {
-			ret = new Variable();
-			ret.setId(cursor.getInt(cursor.getColumnIndex("uniqueid")));
-			ret.setEcmType(ECM.Type.getType(cursor.getString(cursor.getColumnIndex("ecm_type"))));
-			ret.setName(cursor.getString(cursor.getColumnIndex("origname")));
-			if (ret.getName() == null) {
-				ret.setName(cursor.getString(cursor.getColumnIndex("varname")));
-			}
-			String type = cursor.getString(cursor.getColumnIndex("type")).toUpperCase(Locale.ENGLISH);
-			ret.setType(DataType.valueOf(type));
-			ret.setSize(cursor.getInt(cursor.getColumnIndex("size")));
-			if (DataSource.EEPROM.equals(runtimeData)) {
-				ret.setWidth(cursor.getInt(cursor.getColumnIndex("elemsize")));
-				ret.setCols(cursor.getInt(cursor.getColumnIndex("cols")));
-				ret.setRows(cursor.getInt(cursor.getColumnIndex("rows")));
-			} else {
-				ret.setWidth(ret.getSize());
-			}
-			ret.setOffset(cursor.getInt(cursor.getColumnIndex("offset")));
-			ret.setScale(cursor.getDouble(cursor.getColumnIndex("scale")));
-			ret.setTranslate(cursor.getDouble(cursor.getColumnIndex("translate")));
-			ret.setFormat(cursor.getString(cursor.getColumnIndex("format")));
-			ret.setLabel(cursor.getString(cursor.getColumnIndex("name")));
-			ret.setRemarks(cursor.getString(cursor.getColumnIndex("remark")));
-			ret.setDescription(cursor.getString(cursor.getColumnIndex("description")));
-			ret.setUnit(cursor.getString(cursor.getColumnIndex("units")));
-			ret.setSymbol(Units.getSymbol(ret.getUnit()));
-
-			if (DataSource.RUNTIME_DATA.equals(runtimeData)) {
-				ret.setLow(cursor.getDouble(cursor.getColumnIndex("low")));
-				ret.setHigh(cursor.getDouble(cursor.getColumnIndex("high")));
-				ret.setUlow(cursor.getInt(cursor.getColumnIndex("ulow")));
-				ret.setUhigh(cursor.getInt(cursor.getColumnIndex("uhigh")));
-			}
-			ret.init();
+	/**
+	 * SQLite's TEXT-affinity-to-REAL coercion, applied to the ten
+	 * numeric-looking {@code varchar} columns (KTD3.2): a null or
+	 * unparseable string reads as {@code 0.0}, matching {@code
+	 * Cursor.getDouble()}'s behavior on the same columns before the Room
+	 * port.
+	 */
+	private static double parseDouble(String value) {
+		if (value == null) {
+			return 0.0;
 		}
+		try {
+			return Double.parseDouble(value);
+		} catch (NumberFormatException e) {
+			return 0.0;
+		}
+	}
+
+	/** Same coercion as {@link #parseDouble(String)}, truncated to int - matches {@code Cursor.getInt()} on a TEXT column. */
+	private static int parseInt(String value) {
+		return (int) parseDouble(value);
+	}
+
+	private Variable convert(RtVariableRow row) {
+		if (row == null) {
+			return null;
+		}
+		Variable ret = new Variable();
+		ret.setId(row.getUniqueid());
+		ret.setEcmType(ECM.Type.getType(row.getEcmType()));
+		ret.setName(row.getOrigname());
+		if (ret.getName() == null) {
+			ret.setName(row.getVarname());
+		}
+		ret.setType(DataType.valueOf(row.getType().toUpperCase(Locale.ENGLISH)));
+		ret.setSize(row.getSize());
+		ret.setWidth(ret.getSize());
+		ret.setOffset(row.getOffset());
+		ret.setScale(parseDouble(row.getScale()));
+		ret.setTranslate(parseDouble(row.getTranslate()));
+		ret.setFormat(row.getFormat());
+		ret.setLabel(row.getName());
+		ret.setRemarks(row.getRemark());
+		ret.setDescription(row.getDescription());
+		ret.setUnit(row.getUnits());
+		ret.setSymbol(Units.getSymbol(ret.getUnit()));
+		ret.setLow(parseDouble(row.getLow()));
+		ret.setHigh(parseDouble(row.getHigh()));
+		ret.setUlow(parseInt(row.getUlow()));
+		ret.setUhigh(parseInt(row.getUhigh()));
+		ret.init();
+		return ret;
+	}
+
+	private Variable convert(EeVariableRow row) {
+		if (row == null) {
+			return null;
+		}
+		Variable ret = new Variable();
+		ret.setId(row.getUniqueid());
+		ret.setEcmType(ECM.Type.getType(row.getEcmType()));
+		ret.setName(row.getOrigname());
+		if (ret.getName() == null) {
+			ret.setName(row.getVarname());
+		}
+		ret.setType(DataType.valueOf(row.getType().toUpperCase(Locale.ENGLISH)));
+		ret.setSize(row.getSize());
+		ret.setWidth(row.getElemsize() == null ? 0 : row.getElemsize());
+		ret.setCols(row.getCols() == null ? 0 : row.getCols());
+		ret.setRows(row.getRows() == null ? 0 : row.getRows());
+		ret.setOffset(row.getOffset());
+		ret.setScale(parseDouble(row.getScale()));
+		ret.setTranslate(parseDouble(row.getTranslate()));
+		ret.setFormat(row.getFormat());
+		ret.setLabel(row.getName());
+		ret.setRemarks(row.getRemark());
+		ret.setDescription(row.getDescription());
+		ret.setUnit(row.getUnits());
+		ret.setSymbol(Units.getSymbol(ret.getUnit()));
+		ret.init();
 		return ret;
 	}
 }

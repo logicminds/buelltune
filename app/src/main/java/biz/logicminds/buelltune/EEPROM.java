@@ -18,11 +18,11 @@
 package biz.logicminds.buelltune;
 
 import android.content.Context;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import biz.logicminds.buelltune.ECM.Type;
+import biz.logicminds.buelltune.data.EcmDefinitionsDatabase;
+import biz.logicminds.buelltune.data.EepromPageRow;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -97,46 +97,31 @@ public class EEPROM {
 		if (name.length() > 5) {
 			name = name.substring(0, 5);
 		}
-		DBHelper helper = new DBHelper(ctx);
-		EEPROM eeprom = null;
-		SQLiteDatabase db = helper.getReadableDatabase();
-		Cursor c = null;
-		try {
-			String query = "SELECT xsize, type, page, pages.size as pgsize" +
-					" FROM eeprom, pages" +
-					" WHERE pages.category = eeprom.category" +
-					" AND name = '" + name + "'" +
-					" ORDER BY page";
-			// Log.d(TAG, query);
-			c = db.rawQuery(query, null);
-			if (c.getCount() == 0) {
-				return null;
+		EcmDefinitionsDatabase db = EcmDefinitionsDatabase.getInstance(ctx);
+		List<EepromPageRow> rows = db.eepromDao().getPages(name);
+		if (rows.isEmpty()) {
+			return null;
+		}
+		EEPROM eeprom = new EEPROM(name);
+		int pc = 0;
+		for (EepromPageRow row : rows) {
+			if (eeprom.length == 0) {
+				Integer xsize = row.getXsize();
+				eeprom.length = xsize == null ? 0 : xsize;
+				eeprom.xsize = eeprom.length;
+				eeprom.type = Type.getType(row.getType());
+				eeprom.data = new byte[eeprom.length];
 			}
-			eeprom = new EEPROM(name);
-			int pc = 0;
-			while (c.moveToNext()) {
-				if (eeprom.length == 0) {
-					eeprom.length = c.getInt(c.getColumnIndex("xsize"));
-					eeprom.xsize = eeprom.length;
-					eeprom.type = Type.getType(c.getString(c.getColumnIndex("type")));
-					eeprom.data = new byte[eeprom.length];
-				}
-				int pnr = c.getInt(c.getColumnIndex("page"));
-				int sz = c.getInt(c.getColumnIndex("pgsize"));
-				Page pg = eeprom.new Page(pnr, sz);
-				if (pnr == 0) {
-					pg.start = eeprom.length - pg.length;
-				} else {
-					pg.start = pc;
-					pc += pg.length;
-				}
-				eeprom.pages.add(pg);
+			int pnr = row.getPage();
+			int sz = row.getPgsize();
+			Page pg = eeprom.new Page(pnr, sz);
+			if (pnr == 0) {
+				pg.start = eeprom.length - pg.length;
+			} else {
+				pg.start = pc;
+				pc += pg.length;
 			}
-		} finally {
-			if (c != null) {
-				c.close();
-			}
-			db.close();
+			eeprom.pages.add(pg);
 		}
 		return eeprom;
 	}
@@ -166,28 +151,9 @@ public class EEPROM {
 	}
 
 	public static String[] size2id(Context context, int length) throws IOException {
-		DBHelper helper = new DBHelper(context);
-		LinkedList<String> ret = new LinkedList<String>();
-		SQLiteDatabase db = null;
-		Cursor c = null;
-		String name = null;
-		try {
-			db = helper.getReadableDatabase();
-			String query = "SELECT name FROM eeprom WHERE size = " + length + " OR xsize = " + length + " ORDER BY name";
-			c = db.rawQuery(query, null);
-			while (c.moveToNext()) {
-				name = c.getString(c.getColumnIndex("name"));
-				ret.add(name);
-			}
-		} finally {
-			if (c != null) {
-				c.close();
-			}
-			if (db != null) {
-				db.close();
-			}
-		}
-		if (ret.size() == 0) {
+		EcmDefinitionsDatabase db = EcmDefinitionsDatabase.getInstance(context);
+		List<String> ret = db.eepromDao().size2id(length);
+		if (ret.isEmpty()) {
 			throw new IOException(context.getString(R.string.unable_to_determine_ecm_type));
 		}
 

@@ -19,20 +19,9 @@ package biz.logicminds.buelltune;
 
 import android.app.Application;
 
-import java.io.IOException;
-
 public class EcmDroidApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        try {
-            DBHelper dbHelper = new DBHelper(this);
-            dbHelper.setupDB();
-            // Open and close newly installed database so that the version pragma is set
-            dbHelper.getReadableDatabase().close();
-
-        } catch (IOException e) {
-            throw new RuntimeException("Unable to setup database", e);
-        }
     }
 }

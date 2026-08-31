@@ -70,7 +70,6 @@ import com.hoho.android.usbserial.driver.UsbSerialProber;
 import com.hoho.android.usbserial.util.SerialInputOutputManager;
 import biz.logicminds.buelltune.BuildConfig;
 import biz.logicminds.buelltune.Constants;
-import biz.logicminds.buelltune.DBHelper;
 import biz.logicminds.buelltune.ECM;
 import biz.logicminds.buelltune.EcmDroidService;
 import biz.logicminds.buelltune.R;
@@ -101,7 +100,6 @@ public class MainActivity extends AppCompatActivity
 	private static final ColorStateList TINT_CONNECTED = ColorStateList.valueOf(Color.rgb(0x00, 0xdd, 0x00));
 
 	private int currentFragment = R.id.nav_info;
-	private DBHelper dbHelper;
 
 	private ECM ecm = ECM.getInstance(this);
 	protected EcmDroidService ecmDroidService;
@@ -193,9 +191,6 @@ public class MainActivity extends AppCompatActivity
 		startService(new Intent(this, EcmDroidService.class));
 
 		switchToFragment(currentFragment);
-
-		// Install the database
-		dbHelper = new DBHelper(this);
 	}
 
 	/**
