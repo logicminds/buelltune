@@ -194,6 +194,20 @@ public class LogFragment extends Fragment implements OnClickListener {
 		getActivity().unbindService(serviceConnection);
 	}
 
+	@Override
+	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+		// Resume the interrupted recording start rather than leaving the rider's tap consumed (F2, R10).
+		if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+			try {
+				startRecording();
+			} catch (IOException e) {
+				Toast.makeText(getActivity(), "I/O error. " + e.getLocalizedMessage(), Toast.LENGTH_LONG).show();
+			}
+		} else {
+			Toast.makeText(getActivity(), R.string.notification_permission_denied, Toast.LENGTH_LONG).show();
+		}
+	}
+
 	public void onClick(View view) {
 		Interval intv = (Interval) ((Spinner) getView().findViewById(R.id.logInterval)).getSelectedItem();
 		Log.d(TAG, "Interval: " + intv);

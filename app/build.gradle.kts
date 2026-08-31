@@ -24,12 +24,11 @@ android {
         }
     }
     defaultConfig {
-        compileSdk = 34
         applicationId = "biz.logicminds.buelltune"
         versionCode = 28
         versionName = "0.99.8"
         minSdk = 26
-        targetSdk = 33
+        targetSdk = 36
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -53,7 +52,7 @@ android {
         buildConfig = true
         compose = true
     }
-    compileSdk = 34
+    compileSdk = 36
     testOptions {
         unitTests {
             isReturnDefaultValues = true

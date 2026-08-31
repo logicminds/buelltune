@@ -45,15 +45,20 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
+import androidx.core.graphics.Insets;
 import androidx.core.view.GravityCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -155,11 +160,28 @@ public class MainActivity extends AppCompatActivity
 		});
 
 
+		applyEdgeToEdgeInsets();
+
 		DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
 		ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
 				this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
 		drawer.addDrawerListener(toggle);
 		toggle.syncState();
+
+		// targetSdk 36 enables predictive back by default; onBackPressed() is no longer invoked
+		// for back gestures, so the drawer-close behavior moves to the dispatcher (R3).
+		getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+			@Override
+			public void handleOnBackPressed() {
+				if (drawer.isDrawerOpen(GravityCompat.START)) {
+					drawer.closeDrawer(GravityCompat.START);
+				} else {
+					setEnabled(false);
+					getOnBackPressedDispatcher().onBackPressed();
+					setEnabled(true);
+				}
+			}
+		});
 
 		NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
 		navigationView.setNavigationItemSelectedListener(this);
@@ -174,6 +196,60 @@ public class MainActivity extends AppCompatActivity
 
 		// Install the database
 		dbHelper = new DBHelper(this);
+	}
+
+	/**
+	 * Mandatory edge-to-edge display (targetSdk 35+) means the window no longer reserves
+	 * space for the status/navigation bars; pad the activity chrome ourselves so no legacy
+	 * screen is occluded (R3, R4). Applied once at the content-frame/app-bar/FAB level, not
+	 * per Fragment, so R13's "no screen logic edited" constraint holds.
+	 */
+	private void applyEdgeToEdgeInsets() {
+		View drawerLayout = findViewById(R.id.drawer_layout);
+		View appBarLayout = findViewById(R.id.app_bar_layout);
+		View contentFrame = findViewById(R.id.content_frame);
+		View fabView = findViewById(R.id.fab);
+
+		final int appBarPaddingLeft = appBarLayout.getPaddingLeft();
+		final int appBarPaddingRight = appBarLayout.getPaddingRight();
+		final int appBarPaddingBottom = appBarLayout.getPaddingBottom();
+
+		final int contentPaddingLeft = contentFrame.getPaddingLeft();
+		final int contentPaddingTop = contentFrame.getPaddingTop();
+		final int contentPaddingRight = contentFrame.getPaddingRight();
+		final int contentPaddingBottom = contentFrame.getPaddingBottom();
+
+		ViewGroup.MarginLayoutParams fabParams = (ViewGroup.MarginLayoutParams) fabView.getLayoutParams();
+		final int fabMarginBottom = fabParams.bottomMargin;
+		final int fabMarginEnd = fabParams.getMarginEnd();
+
+		ViewCompat.setOnApplyWindowInsetsListener(drawerLayout, (view, windowInsets) -> {
+			Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+
+			appBarLayout.setPadding(appBarPaddingLeft + systemBars.left, systemBars.top,
+					appBarPaddingRight + systemBars.right, appBarPaddingBottom);
+
+			contentFrame.setPadding(contentPaddingLeft + systemBars.left, contentPaddingTop,
+					contentPaddingRight + systemBars.right, contentPaddingBottom + systemBars.bottom);
+
+			ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) fabView.getLayoutParams();
+			params.bottomMargin = fabMarginBottom + systemBars.bottom;
+			params.setMarginEnd(fabMarginEnd + systemBars.right);
+			fabView.setLayoutParams(params);
+
+			return windowInsets;
+		});
+	}
+
+	@Override
+	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+		if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+			// Resume the interrupted action rather than leaving the rider's first tap consumed (F2, R10).
+			showDevices();
+		} else {
+			Toast.makeText(this, R.string.bluetooth_connect_permission_denied, Toast.LENGTH_LONG).show();
+		}
 	}
 
 	@Override
@@ -209,16 +285,6 @@ public class MainActivity extends AppCompatActivity
 	protected void onDestroy() {
 		unbindService(serviceConnection);
 		super.onDestroy();
-	}
-
-	@Override
-	public void onBackPressed() {
-		DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
-		if (drawer.isDrawerOpen(GravityCompat.START)) {
-			drawer.closeDrawer(GravityCompat.START);
-		} else {
-			super.onBackPressed();
-		}
 	}
 
 	@Override

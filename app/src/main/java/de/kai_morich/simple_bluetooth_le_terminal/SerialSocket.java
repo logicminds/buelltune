@@ -173,7 +173,9 @@ public class SerialSocket extends BluetoothGattCallback {
 			throw new IOException("already connected");
 		canceled = false;
 		this.listener = listener;
-		context.registerReceiver(disconnectBroadcastReceiver, new IntentFilter(Constants.INTENT_ACTION_DISCONNECT));
+		// BuellTune local fork note: INTENT_ACTION_DISCONNECT is app-defined (not a protected system broadcast),
+		// so targetSdk 34+ requires an explicit export flag; RECEIVER_NOT_EXPORTED matches its local-only use.
+		context.registerReceiver(disconnectBroadcastReceiver, new IntentFilter(Constants.INTENT_ACTION_DISCONNECT), Context.RECEIVER_NOT_EXPORTED);
 		Log.d(TAG, "connect "+device);
 		context.registerReceiver(pairingBroadcastReceiver, pairingIntentFilter);
 		if (Build.VERSION.SDK_INT < 23) {

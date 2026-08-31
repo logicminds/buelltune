@@ -39,6 +39,8 @@
 	<string name="log_status" tools:ignore="PluralsCandidate">Recording… [%1$d recs, %2$d KB]</string>
 	<string name="bluetooth_is_not_available">Bluetooth is not available</string>
 	<string name="paired_devices">Paired Devices</string>
+	<string name="bluetooth_connect_permission_denied">Bluetooth permission denied: cannot list paired devices or connect.</string>
+	<string name="notification_permission_denied">Notification permission denied: log recording will run without a status notification.</string>
 	<string name="no_ext_storage">External storage not available.</string>
 	<string name="dash">…</string>
 	<string name="fetching_trouble_codes">Fetching Trouble Codes…</string>
@@ -46,6 +48,7 @@
 	<string name="clearing_trouble_codes">Clearing Trouble Codes…</string>
 	<string name="clear_all_errors">OK to permanently clear all errors?</string>
 	<string name="recording_started">Recording ECM data</string>
+	<string name="reading_started">Reading ECM data</string>
 	<string name="log_interval">Log Interval</string>
 	<string name="log_recorder">Log Recorder</string>
 	<string name="ecm_id">ECM ID:</string>

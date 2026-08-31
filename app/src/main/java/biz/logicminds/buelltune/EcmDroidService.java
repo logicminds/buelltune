@@ -23,7 +23,9 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -138,7 +140,7 @@ public class EcmDroidService extends Service {
 		Log.i(TAG, "Recording started.");
 		ecm.setRecording(true);
 		recordingStarted = System.currentTimeMillis();
-		showNotification(getString(R.string.app_name), getString(R.string.recording_started));
+		enterForeground(getString(R.string.app_name), getString(R.string.recording_started));
 	}
 
 	public synchronized void stopRecording() {
@@ -152,13 +154,18 @@ public class EcmDroidService extends Service {
 			}
 			currentLog = null;
 		}
-		// Turn off notification
-		nm.cancel(RECORDING_ID);
 		Log.i(TAG, "Recording stopped.");
 		ecm.setRecording(false);
 		recordingInterval = 0;
 		sendBroadcast(new Intent(RECORDING_STOPPED));
+		if (reading) {
+			// Still polling live data: keep the foreground notification up, but drop the recording-specific text.
+			enterForeground(getString(R.string.app_name), getString(R.string.reading_started));
+		} else {
+			exitForeground();
+		}
 	}
+
 
 	public boolean isRecording() {
 		return recording;
@@ -174,6 +181,7 @@ public class EcmDroidService extends Service {
 			readerThread.notify();
 		}
 		Log.i(TAG, "RT Data read started.");
+		enterForeground(getString(R.string.app_name), getString(R.string.reading_started));
 	}
 
 	public synchronized void stopReading() {
@@ -182,6 +190,12 @@ public class EcmDroidService extends Service {
 			readerThread.notify();
 		}
 		Log.i(TAG, "RT Data read stopped.");
+		if (recording) {
+			// Still recording: keep the foreground notification up, restated with the recording text.
+			enterForeground(getString(R.string.app_name), getString(R.string.recording_started));
+		} else {
+			exitForeground();
+		}
 	}
 
 	private class ReaderThread extends Thread {
@@ -258,7 +272,27 @@ public class EcmDroidService extends Service {
 		}
 	}
 
-	private void showNotification(String label, String text) {
+	/**
+	 * Enter (or refresh) the connectedDevice foreground state, entered when either live
+	 * polling (startReading) or log recording (startRecording) begins, per R2/KD10/KTD10.
+	 */
+	private void enterForeground(String label, String text) {
+		Notification notification = buildNotification(label, text);
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+			startForeground(RECORDING_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
+		} else {
+			startForeground(RECORDING_ID, notification);
+		}
+	}
+
+	/**
+	 * Leave the foreground state. Only called once both polling and recording have stopped.
+	 */
+	private void exitForeground() {
+		stopForeground(STOP_FOREGROUND_REMOVE);
+	}
+
+	private Notification buildNotification(String label, String text) {
 		Bundle extras = new Bundle();
 		extras.putInt(MainActivity.CURRENT_FRAGMENT, R.id.nav_log);
 		Intent intent = new Intent(this, MainActivity.class);
@@ -275,9 +309,7 @@ public class EcmDroidService extends Service {
 				.setContentText(text)
 				.setContentIntent(contentIntent)
 				.setSmallIcon(R.drawable.ic_log);
-		Notification notification = builder.build();
-		notification.flags |= Notification.FLAG_NO_CLEAR;
-		nm.notify(RECORDING_ID, notification);
+		return builder.build();
 	}
 
 	private synchronized void logPacket(byte[] data) throws IOException {
