@@ -34,6 +34,14 @@ public class TestUtils {
 		return readResource("/BUEIB_log.bin");
 	}
 
+	public static byte[] readBue2dBinaryLog() throws IOException {
+		return readResource("/BUE2D_log.bin");
+	}
+
+	public static byte[] readBue2dMslReference() throws IOException {
+		return readResource("/BUE2D_log.msl");
+	}
+
 	private static byte[] readResource(String resource) throws IOException {
 		InputStream in = TestUtils.class.getResourceAsStream(resource);
 		ByteArrayOutputStream bao = new ByteArrayOutputStream();

@@ -15,49 +15,24 @@
  You should have received a copy of the GNU General Public License
  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
-package biz.logicminds.buelltune;
+package biz.logicminds.buelltune
 
 /**
  * An ECM error consisting of a code, description and type.
  */
-public class Error {
+class Error {
 	/**
 	 * Type of error (current, recent, stored).
 	 */
-	public enum ErrorType {
+	enum class ErrorType {
 		CURRENT, RECENT, STORED
 	}
 
-	private String code;
-	private String description;
-	private ErrorType type;
+	var code: String? = null
+	var description: String? = null
+	var type: ErrorType? = null
 
-	public String getCode() {
-		return code;
-	}
-
-	public void setCode(String code) {
-		this.code = code;
-	}
-
-	public String getDescription() {
-		return description;
-	}
-
-	public void setDescription(String description) {
-		this.description = description;
-	}
-
-	public ErrorType getType() {
-		return type;
-	}
-
-	public void setType(ErrorType type) {
-		this.type = type;
-	}
-
-	@Override
-	public String toString() {
-		return "Error[type: " + type + ", code: " + code + ", description: " + description + "]";
+	override fun toString(): String {
+		return "Error[type: $type, code: $code, description: $description]"
 	}
 }

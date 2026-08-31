@@ -26,6 +26,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
+import static org.junit.Assert.assertArrayEquals;
+
 @RunWith(JUnit4.class)
 public class TestBin2Msl{
 
@@ -35,5 +37,21 @@ public class TestBin2Msl{
 		ByteArrayOutputStream msl = new ByteArrayOutputStream(1024 * 1024 * 10);
 		new Bin2MslConverter().convert(bin, msl);
 		System.out.println("Number of bytes in msl file: " + msl.size());
+	}
+
+	/**
+	 * Covers R5, R14: TestBin2Msl moved from androidTest to the JVM suite,
+	 * and its converted output is now verified byte-identical against the
+	 * committed BUE2D_log.msl reference (not just printed as in the
+	 * pre-existing testConversion() above, which is left with its assertion
+	 * unchanged per R5).
+	 */
+	@Test
+	public void testConversionMatchesReference() throws IOException {
+		ByteArrayInputStream bin = new ByteArrayInputStream(TestUtils.readBue2dBinaryLog());
+		ByteArrayOutputStream msl = new ByteArrayOutputStream(1024 * 1024);
+		new Bin2MslConverter().convert(bin, msl);
+		byte[] expected = TestUtils.readBue2dMslReference();
+		assertArrayEquals(expected, msl.toByteArray());
 	}
 }

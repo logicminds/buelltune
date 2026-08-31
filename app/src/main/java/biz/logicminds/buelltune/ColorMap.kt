@@ -15,35 +15,42 @@
  You should have received a copy of the GNU General Public License
  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
-package biz.logicminds.buelltune;
-
-import android.graphics.Color;
+package biz.logicminds.buelltune
 
 /**
  * Map an octet value to a corresponding ARGB color code.
  */
-public class ColorMap {
+object ColorMap {
 
-	private static final int[] colors = new int[256];
+	private val colors = IntArray(256)
 
-	static {
-		int r = 0, g = 0, b = 256;
-		for (int i = 0; i < 256; i++) {
-			colors[i] = Color.argb(255, Math.min(255, r), Math.min(255, g), Math.min(255, b));
+	init {
+		var r = 0
+		var g = 0
+		var b = 256
+		for (i in 0 until 256) {
+			colors[i] = argb(255, minOf(255, r), minOf(255, g), minOf(255, b))
 			if (i < 64) {
-				g += 4;
+				g += 4
 			} else if (i < 128) {
-				b -= 4;
+				b -= 4
 			} else if (i < 192) {
-				r += 4;
+				r += 4
 			} else {
-				g -= 4;
+				g -= 4
 			}
 		}
 	}
 
-	public static int getColor(byte val) {
-		return colors[val & 0xff];
+	// Matches the documented packing order of android.graphics.Color.argb(a, r, g, b):
+	// (a << 24) | (r << 16) | (g << 8) | b -- inlined so this class has zero Android dependency.
+	private fun argb(a: Int, r: Int, g: Int, b: Int): Int {
+		return (a shl 24) or (r shl 16) or (g shl 8) or b
+	}
+
+	@JvmStatic
+	fun getColor(value: Byte): Int {
+		return colors[value.toInt() and 0xff]
 	}
 
 }

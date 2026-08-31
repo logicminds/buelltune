@@ -15,33 +15,30 @@
  You should have received a copy of the GNU General Public License
  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
-package biz.logicminds.buelltune;
-
-import java.util.HashMap;
+package biz.logicminds.buelltune
 
 /**
- * {@code Units} maps a unit name to its symbol (e.g. "Degree" maps to "°").
+ * `Units` maps a unit name to its symbol (e.g. "Degree" maps to "°").
  */
-public abstract class Units {
-	private static final HashMap<String, String> map = new HashMap<String, String>();
+object Units {
+	private val map: Map<String, String> = mapOf(
+		"Degree" to "°",
+		"Degree BTDC" to "°",
+		"Degree C" to "°",
+		"Degrees" to "°",
+		"Degrees BDD" to "°",
+		"Degrees C" to "°",
+		"Percent" to "%",
+		"TE degC" to "°",
+		"Volt" to "V",
+		"Volts" to "V"
+	)
 
-	static {
-		map.put("Degree", "°");
-		map.put("Degree BTDC", "°");
-		map.put("Degree C", "°");
-		map.put("Degrees", "°");
-		map.put("Degrees BDD", "°");
-		map.put("Degrees C", "°");
-		map.put("Percent", "%");
-		map.put("TE degC", "°");
-		map.put("Volt", "V");
-		map.put("Volts", "V");
-	}
-
-	public static String getSymbol(String unit) {
+	@JvmStatic
+	fun getSymbol(unit: String?): String? {
 		if (unit != null) {
-			return map.get(unit);
+			return map[unit]
 		}
-		return null;
+		return null
 	}
 }
