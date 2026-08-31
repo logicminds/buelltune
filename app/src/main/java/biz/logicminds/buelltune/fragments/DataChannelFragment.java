@@ -41,7 +41,7 @@ import androidx.annotation.Nullable;
 import biz.logicminds.buelltune.Constants.Variables;
 import biz.logicminds.buelltune.DataChannelAdapter;
 import biz.logicminds.buelltune.ECM;
-import biz.logicminds.buelltune.EcmDroidService;
+import biz.logicminds.buelltune.service.EcmService;
 import biz.logicminds.buelltune.R;
 import biz.logicminds.buelltune.Utils;
 import biz.logicminds.buelltune.Variable;
@@ -64,7 +64,7 @@ public class DataChannelFragment extends Fragment {
 	private VariableProvider provider = VariableProvider.getInstance(getActivity());
 	private ToggleButton toggleButton;
 	private DataChannelAdapter dataChannelAdapter;
-	private EcmDroidService ecmDroidService;
+	private EcmService ecmDroidService;
 
 	private ServiceConnection serviceConnection = new ServiceConnection() {
 
@@ -76,7 +76,7 @@ public class DataChannelFragment extends Fragment {
 
 		public void onServiceConnected(ComponentName name, IBinder service) {
 			Log.d(TAG, "Connected to Service");
-			ecmDroidService = ((EcmDroidService.EcmDroidBinder) service).getService();
+			ecmDroidService = ((EcmService.EcmServiceBinder) service).getService();
 			toggleButton.setEnabled(ecm.isConnected());
 			toggleButton.setChecked(ecmDroidService.isReading());
 		}
@@ -122,7 +122,7 @@ public class DataChannelFragment extends Fragment {
 				if (on) {
 					ecmDroidService.startReading();
 					dataChannelAdapter.setAutoRefresh(true);
-					getActivity().registerReceiver(receiver, new IntentFilter(EcmDroidService.REALTIME_DATA), Context.RECEIVER_NOT_EXPORTED);
+					getActivity().registerReceiver(receiver, new IntentFilter(EcmService.REALTIME_DATA), Context.RECEIVER_NOT_EXPORTED);
 				} else {
 					dataChannelAdapter.setAutoRefresh(false);
 					ecmDroidService.stopReading();
@@ -141,7 +141,7 @@ public class DataChannelFragment extends Fragment {
 	public void onCreate(Bundle savedInstanceState) {
 		Log.d(TAG, "onCreate");
 		super.onCreate(savedInstanceState);
-		getActivity().bindService(new Intent(getActivity(), EcmDroidService.class), serviceConnection, Context.BIND_AUTO_CREATE);
+		getActivity().bindService(new Intent(getActivity(), EcmService.class), serviceConnection, Context.BIND_AUTO_CREATE);
 
 		if (!Utils.isEmptyString(ecm.getId())) {
 			SharedPreferences prefs = getActivity().getPreferences(Activity.MODE_PRIVATE);
@@ -167,9 +167,9 @@ public class DataChannelFragment extends Fragment {
 		toggleButton.setChecked(ecmDroidService != null && ecmDroidService.isReading());
 		if (ecmDroidService != null && ecmDroidService.isReading()) {
 			dataChannelAdapter.setAutoRefresh(true);
-			getActivity().registerReceiver(receiver, new IntentFilter(EcmDroidService.REALTIME_DATA), Context.RECEIVER_NOT_EXPORTED);
+			getActivity().registerReceiver(receiver, new IntentFilter(EcmService.REALTIME_DATA), Context.RECEIVER_NOT_EXPORTED);
 		}
-		getActivity().registerReceiver(connectionLostReceiver, new IntentFilter(EcmDroidService.CONNECTION_LOST), Context.RECEIVER_NOT_EXPORTED);
+		getActivity().registerReceiver(connectionLostReceiver, new IntentFilter(EcmService.CONNECTION_LOST), Context.RECEIVER_NOT_EXPORTED);
 	}
 
 	@Override

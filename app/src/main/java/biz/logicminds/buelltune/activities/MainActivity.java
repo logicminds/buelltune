@@ -71,7 +71,7 @@ import com.hoho.android.usbserial.util.SerialInputOutputManager;
 import biz.logicminds.buelltune.BuildConfig;
 import biz.logicminds.buelltune.Constants;
 import biz.logicminds.buelltune.ECM;
-import biz.logicminds.buelltune.EcmDroidService;
+import biz.logicminds.buelltune.service.EcmService;
 import biz.logicminds.buelltune.R;
 import biz.logicminds.buelltune.Utils;
 import biz.logicminds.buelltune.fragments.ActiveTestsFragment;
@@ -104,7 +104,7 @@ public class MainActivity extends AppCompatActivity
 	private int currentFragment = R.id.nav_info;
 
 	private ECM ecm = ECM.getInstance(this);
-	protected EcmDroidService ecmDroidService;
+	protected EcmService ecmDroidService;
 	private FloatingActionButton fab;
 
 	private boolean isTransactionSafe;
@@ -121,7 +121,7 @@ public class MainActivity extends AppCompatActivity
 
 		public void onServiceConnected(ComponentName name, IBinder service) {
 			Log.d(TAG, "Connected to Log Service");
-			ecmDroidService = ((EcmDroidService.EcmDroidBinder) service).getService();
+			ecmDroidService = ((EcmService.EcmServiceBinder) service).getService();
 		}
 	};
 
@@ -189,8 +189,8 @@ public class MainActivity extends AppCompatActivity
 		((TextView) navigationView.getHeaderView(0).findViewById(R.id.headerTitle)).setText(Utils.getAppVersion(this));
 
 		// Bind to our service and setup the connect button
-		bindService(new Intent(this, EcmDroidService.class), serviceConnection, Context.BIND_AUTO_CREATE);
-		startService(new Intent(this, EcmDroidService.class));
+		bindService(new Intent(this, EcmService.class), serviceConnection, Context.BIND_AUTO_CREATE);
+		startService(new Intent(this, EcmService.class));
 
 		switchToFragment(currentFragment);
 	}
@@ -253,7 +253,7 @@ public class MainActivity extends AppCompatActivity
 	protected void onResume() {
 		super.onResume();
 		updateConnectButton();
-		registerReceiver(connectionLostReceiver, new IntentFilter(EcmDroidService.CONNECTION_LOST), Context.RECEIVER_NOT_EXPORTED);
+		registerReceiver(connectionLostReceiver, new IntentFilter(EcmService.CONNECTION_LOST), Context.RECEIVER_NOT_EXPORTED);
 	}
 
 	@Override
@@ -524,7 +524,7 @@ public class MainActivity extends AppCompatActivity
 				EcmTransport transport;
 				if (btDevice != null) {
 					if (ble) {
-						throw new IOException("BLE transport is not yet available.");
+						transport = TransportFactory.ble(MainActivity.this, btDevice);
 					} else {
 						transport = TransportFactory.bluetoothClassic(btDevice);
 					}

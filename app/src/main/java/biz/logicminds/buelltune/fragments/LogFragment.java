@@ -54,7 +54,7 @@ import androidx.documentfile.provider.DocumentFile;
 
 import biz.logicminds.buelltune.Constants.Variables;
 import biz.logicminds.buelltune.ECM;
-import biz.logicminds.buelltune.EcmDroidService;
+import biz.logicminds.buelltune.service.EcmService;
 import biz.logicminds.buelltune.R;
 import biz.logicminds.buelltune.Variable;
 import biz.logicminds.buelltune.activities.MainActivity;
@@ -77,7 +77,7 @@ public class LogFragment extends Fragment implements OnClickListener {
 	private TextView logStatus;
 	private TextView tpsValue, rpmValue, cltValue;
 	private ECM ecm = ECM.getInstance(getActivity());
-	private EcmDroidService ecmDroidService;
+	private EcmService ecmDroidService;
 	private static DocumentFile docRoot;
 	private static ParcelFileDescriptor logFile;
 	private static CharSequence logTimestamp;
@@ -116,7 +116,7 @@ public class LogFragment extends Fragment implements OnClickListener {
 
 		public void onServiceConnected(ComponentName name, IBinder service) {
 			Log.d(TAG, "Connected to Log Service");
-			ecmDroidService = ((EcmDroidService.EcmDroidBinder) service).getService();
+			ecmDroidService = ((EcmService.EcmServiceBinder) service).getService();
 			if (ecm.isConnected()) {
 				recordButton.setEnabled(true);
 				if (ecm.isRecording()) {
@@ -155,7 +155,7 @@ public class LogFragment extends Fragment implements OnClickListener {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		getActivity().bindService(new Intent(getActivity(), EcmDroidService.class), serviceConnection, Context.BIND_AUTO_CREATE);
+		getActivity().bindService(new Intent(getActivity(), EcmService.class), serviceConnection, Context.BIND_AUTO_CREATE);
 	}
 
 	@Override
@@ -164,9 +164,9 @@ public class LogFragment extends Fragment implements OnClickListener {
 		MainActivity activity = (MainActivity) getActivity();
 		activity.updateConnectButton();
 		activity.setTitle(getString(R.string.log_recorder));
-		activity.registerReceiver(receiver, new IntentFilter(EcmDroidService.RECORDING_STARTED), Context.RECEIVER_NOT_EXPORTED);
-		activity.registerReceiver(receiver, new IntentFilter(EcmDroidService.RECORDING_STOPPED), Context.RECEIVER_NOT_EXPORTED);
-		activity.registerReceiver(receiver, new IntentFilter(EcmDroidService.REALTIME_DATA), Context.RECEIVER_NOT_EXPORTED);
+		activity.registerReceiver(receiver, new IntentFilter(EcmService.RECORDING_STARTED), Context.RECEIVER_NOT_EXPORTED);
+		activity.registerReceiver(receiver, new IntentFilter(EcmService.RECORDING_STOPPED), Context.RECEIVER_NOT_EXPORTED);
+		activity.registerReceiver(receiver, new IntentFilter(EcmService.REALTIME_DATA), Context.RECEIVER_NOT_EXPORTED);
 		Spinner spinner = getView().findViewById(R.id.logInterval);
 		spinner.setEnabled(ecmDroidService == null || !ecm.isRecording());
 		SharedPreferences prefs = activity.getPreferences(Activity.MODE_PRIVATE);

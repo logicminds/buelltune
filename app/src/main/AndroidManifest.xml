@@ -51,7 +51,7 @@
             android:label="@string/about" />
 
         <service
-            android:name=".EcmDroidService"
+            android:name=".service.EcmService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
 

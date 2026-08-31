@@ -4,6 +4,7 @@ kotlin = "2.2.10"
 ksp = "2.3.11"
 junit = "4.13.2"
 junitExt = "1.3.0"
+testRules = "1.7.0"
 espressoCore = "3.7.0"
 appcompat = "1.7.1"
 material = "1.13.0"
@@ -24,6 +25,7 @@ usbserial = { group= "com.github.mik3y", name = "usb-serial-for-android", versio
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitExt" }
+test-rules = { group = "androidx.test", name = "rules", version.ref = "testRules" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
