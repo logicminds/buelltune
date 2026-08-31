@@ -58,7 +58,8 @@ Gradle wrapper only; Gradle 9.4.1 pinned via `gradle/wrapper/gradle-wrapper.prop
 ./gradlew installDebug           # Build + install debug APK on connected device
 ./gradlew clean                  # Clean build outputs
 ./gradlew lint                   # Android Lint
-./gradlew test                   # JVM unit tests (none currently present, see Testing)
+./gradlew test                   # JVM unit tests (see Testing & QA)
+./gradlew ecmsimIntegrationTest  # ecmsim-backed JVM integration suite (R16, R17) — see Testing & QA
 ./gradlew connectedAndroidTest   # Instrumented tests — REQUIRES a connected device/emulator
 ```
 
@@ -68,7 +69,7 @@ Release signing is optional and file-based: create a git-ignored `keystore.prope
 
 Bump the shipped version by editing `versionCode`/`versionName` in `app/build.gradle.kts`.
 
-Hardware-free ECM simulator: `third_party/ecmsim` is a pinned git submodule of `github.com/ecmdroid/ecmsim`. `./gradlew ecmsimBuild` builds its jar via its own Maven wrapper (requires a JDK 21+ `JAVA_HOME`, or pass `-PecmsimJavaHome=/path/to/jdk21`); `./gradlew ecmsimRun` builds it if needed and starts it against the bundled `BUEIB` fixtures on TCP port 6280 (`-PecmsimModel=`/`-PecmsimPort=`/`-PecmsimXpr=`/`-PecmsimLog=` override the defaults).
+Hardware-free ECM simulator: `third_party/ecmsim` is a pinned git submodule of `github.com/ecmdroid/ecmsim`. `./gradlew ecmsimBuild` builds its jar via its own Maven wrapper (requires a JDK 21+ `JAVA_HOME`, or pass `-PecmsimJavaHome=/path/to/jdk21`); `./gradlew ecmsimRun` builds it if needed and starts it against the bundled `BUEIB` fixtures on TCP port 6280 (`-PecmsimModel=`/`-PecmsimPort=`/`-PecmsimXpr=`/`-PecmsimLog=` override the defaults). `./gradlew ecmsimIntegrationTest` drives the same simulator from a JVM JUnit suite instead — see Testing & QA.
 
 ## Code Conventions & Common Patterns
 
@@ -118,6 +119,7 @@ Hardware-free ECM simulator: `third_party/ecmsim` is a pinned git submodule of `
   ```
 - `./gradlew lint` is available for static analysis; no enforced formatter/linter config was found — match surrounding code style exactly.
 - When adding tests for new protocol/DB logic, follow the existing pattern: instrumented `Test<Component>` class under `androidTest`, using bundled `.eeprom`/`.bin` resources rather than mocks (no Robolectric/mocking framework is configured).
+- **`ecmsim`-backed JVM integration suite** (R16, R17, AE5): `app/src/test/java/biz/logicminds/buelltune/integration/` drives the real `TcpTransport`/`ECM`/`PollRecordLoop` over TCP against a real local `ecmsim` process — connect/version handshake, EEPROM page fetch/write, realtime polling, an active-test trigger, a checksum-corrupted-frame rejection, and two connection-loss scenarios (killing the simulator process; closing the socket without killing it). `ECM`'s EEPROM-definitions/variable/bitset lookups are backed by a plain JDBC-SQLite implementation (`JdbcEcmDefinitionsProvider`/`JdbcVariableProvider`/`JdbcBitSetProvider` in that same package) reading the bundled `buelltune.db.gz`, never Room. Excluded from the default `test` task (starting a real simulator per test class is too slow for the inner dev loop) — run it with `./gradlew ecmsimIntegrationTest -PecmsimJavaHome=/path/to/jdk21` (same JDK-21+ requirement as `ecmsimBuild`/`ecmsimRun`; the task depends on `ecmsimBuild`, so the jar is built automatically if missing).
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:970c3bf2 -->
 ## Beads Issue Tracker

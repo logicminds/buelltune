@@ -96,9 +96,72 @@ dependencies {
     implementation(libs.compose.navigation)
     testImplementation(libs.junit)
     testImplementation(libs.mockito.core)
+    testImplementation(libs.sqlite.jdbc)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.test.rules)
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
+}
+
+// ecmsim-backed JVM integration suite (R16, R17, AE5, KTD7) -- every class
+// under biz.logicminds.buelltune.integration carries this JUnit @Category
+// marker so it can be excluded from the default unit test tasks (starting
+// a real ecmsim process per test class is too slow for the inner dev loop,
+// see AGENTS.md/docs/DEVELOPER_GUIDE.md) and run instead, in full, via the
+// dedicated ecmsimIntegrationTest task below -- one documented command.
+val ecmSimIntegrationCategory = "biz.logicminds.buelltune.integration.EcmSimIntegrationSuite"
+
+tasks.withType<Test>().configureEach {
+    // Neither the bundled reference-database asset nor the ecmsim jar/JDK
+    // lives on the JVM test classpath -- both need a real filesystem path,
+    // and relying on the Test task's default working directory would be an
+    // undocumented assumption. Harmless no-ops for ordinary unit tests that
+    // never read these properties.
+    systemProperty("buelltune.assetsDir", layout.projectDirectory.dir("src/main/assets").asFile.absolutePath)
+    systemProperty(
+        "buelltune.ecmsimJar",
+        rootProject.layout.projectDirectory.dir("third_party/ecmsim/target").file("ecmsim.jar").asFile.absolutePath,
+    )
+    // Same -PecmsimJavaHome/ECMSIM_JAVA_HOME convention gradle/ecmsim.gradle.kts
+    // already uses for ecmsimBuild/ecmsimRun.
+    val ecmsimJavaHome = (project.findProperty("ecmsimJavaHome") as String?) ?: System.getenv("ECMSIM_JAVA_HOME")
+    if (ecmsimJavaHome != null) {
+        systemProperty("buelltune.ecmsimJavaHome", ecmsimJavaHome)
+    }
+}
+
+tasks.matching { it.name == "testDebugUnitTest" || it.name == "testReleaseUnitTest" }.configureEach {
+    (this as Test).useJUnit {
+        excludeCategories(ecmSimIntegrationCategory)
+    }
+}
+
+val ecmsimIntegrationTest by tasks.registering(Test::class) {
+    group = "verification"
+    description = "Runs the ecmsim-backed JVM integration suite (R16, R17, AE5) against a real " +
+        "local ecmsim process. Excluded from the default test task since starting a real " +
+        "simulator per test class is too slow for the inner dev loop. Requires " +
+        "third_party/ecmsim/target/ecmsim.jar (built automatically via the ecmsimBuild " +
+        "dependency below; pass -PecmsimJavaHome=/path/to/jdk21 if the default JDK isn't 21+)."
+    dependsOn(":ecmsimBuild")
+    useJUnit {
+        includeCategories(ecmSimIntegrationCategory)
+    }
+    // Exercises a real external process each run; never treat as up-to-date.
+    outputs.upToDateWhen { false }
+}
+
+// testDebugUnitTest's testClassesDirs/classpath are only fully resolved
+// once AGP has finished registering the variant unit test tasks (in its
+// own afterEvaluate) -- deferring this copy the same way keeps
+// ecmsimIntegrationTest running the exact same compiled classes/classpath
+// as the default suite, without re-deriving Room/Kotlin/AGP's classpath
+// wiring by hand.
+afterEvaluate {
+    val debugUnitTest = tasks.named<Test>("testDebugUnitTest").get()
+    ecmsimIntegrationTest.configure {
+        testClassesDirs = debugUnitTest.testClassesDirs
+        classpath = debugUnitTest.classpath
+    }
 }

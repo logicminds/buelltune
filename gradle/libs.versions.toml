@@ -15,6 +15,7 @@ room = "2.8.4"
 coroutines = "1.11.0"
 composeBom = "2026.02.01"
 mockito = "5.14.2"
+sqliteJdbc = "3.53.4.0"
 
 [libraries]
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
@@ -42,6 +43,7 @@ compose-lifecycle-viewmodel = { group = "androidx.lifecycle", name = "lifecycle-
 compose-lifecycle-runtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version = "2.10.0" }
 compose-navigation = { group = "androidx.navigation", name = "navigation-compose", version = "2.9.8" }
 compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+sqlite-jdbc = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqliteJdbc" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

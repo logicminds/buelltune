@@ -94,6 +94,10 @@ APK outputs land in `app/build/outputs/apk/{debug,release}/`.
   requirement from the Android build) and starts it against the bundled
   `BUEIB` fixtures on TCP port 6280 (`./gradlew ecmsimBuild` builds only);
   see README.md's "Running the simulator" section for options.
+- **`ecmsim`-backed JVM integration suite** (R16, R17, AE5): drives the
+  same simulator from a JUnit suite instead of a manual connection —
+  `./gradlew ecmsimIntegrationTest -PecmsimJavaHome=/path/to/jdk21`; see
+  §13 Testing.
 
 ## 3. High-Level Architecture
 
@@ -663,6 +667,42 @@ against real captured data.
 Naming convention for new tests: `Test<Component>.java`, methods prefixed
 `test`, placed alongside the existing classes under
 `app/src/androidTest/java/biz/logicminds/buelltune/`.
+
+### `ecmsim`-backed JVM integration suite (R16, R17, AE5)
+
+`app/src/test/java/biz/logicminds/buelltune/integration/` is a headless
+JVM/JUnit 4 suite that drives `TcpTransport`, `ECM`, and `PollRecordLoop`
+over TCP against a real, locally spawned `ecmsim` process — no device,
+emulator, or manual connection required. `EcmSimProtocolIntegrationTest`
+covers connect/version handshake, EEPROM page fetch, an EEPROM write
+command (asserted as request/ACK shape only — `ecmsim`'s `CMD_SET` handler
+ACKs without persisting, so read-back is not asserted), realtime polling
+across several frames, an active-test trigger, and a checksum-corrupted
+response (rejected promptly, not hung — corruption is injected at the wire
+level via `PduRelay` since `ecmsim` never produces a bad checksum itself).
+`EcmSimConnectionLossIntegrationTest` covers R17: killing the simulator
+process mid-recording, and separately closing the TCP socket without
+killing it — both must flip `PollRecordLoop.state` to `Failed(Io)`, stop
+polling, and flush/close the recording sink with every pre-drop frame
+intact.
+
+`ECM`'s EEPROM-definitions/variable/bitset lookups are backed by a plain
+`org.xerial:sqlite-jdbc` implementation (`JdbcEcmDefinitionsProvider`,
+`JdbcVariableProvider`, `JdbcBitSetProvider`, same package) reading the
+bundled `buelltune.db.gz` directly — never Room, which needs an Android
+`Context`/SQLite implementation this suite deliberately runs without.
+
+Excluded from the default `test`/`testDebugUnitTest` task (starting a real
+simulator process per test class is too slow for the inner dev loop) via a
+JUnit `@Category` marker; run it on its own:
+
+```bash
+./gradlew ecmsimIntegrationTest -PecmsimJavaHome=/path/to/jdk21
+```
+
+The task depends on `ecmsimBuild`, so `third_party/ecmsim/target/ecmsim.jar`
+is built automatically if missing (same JDK 21+ requirement as
+`ecmsimBuild`/`ecmsimRun`, §2).
 
 ## 14. Code Conventions
 
