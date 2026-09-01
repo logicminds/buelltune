@@ -1,6 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-	<color name="colorPrimary">#3F51B5</color>
-	<color name="colorPrimaryDark">#303F9F</color>
-	<color name="colorAccent">#FF0000</color>
+	<!-- BuellTune brand palette, sampled/derived from the adaptive-icon artwork
+	     (drawable/ic_launcher_foreground.xml): burnt-orange tachometer needle,
+	     charcoal dashboard-bezel background, electric-blue diagnostic-spark accent. -->
+	<color name="colorPrimary">#CC5209</color>
+	<color name="colorPrimaryDark">#20242A</color>
+	<color name="colorAccent">#0288D1</color>
+
+	<!-- Nav-drawer header gradient (side_nav_bar.xml): warm orange fading to the
+	     icon's charcoal, replacing the old cyan-to-navy gradient. -->
+	<color name="nav_header_gradient_start">#FF8A3D</color>
+	<color name="nav_header_gradient_center">#CC5209</color>
+	<color name="nav_header_gradient_end">#20242A</color>
+
+	<!-- Nav-drawer menu icon tint (activity_main.xml NavigationView itemIconTint). -->
+	<color name="nav_drawer_icon_tint">#CC5209</color>
+
+	<!-- troublecodes.xml input field chrome, moved off hardcoded literals. -->
+	<color name="input_field_background">#EEEEEE</color>
+	<color name="input_field_stroke">#CCCCCC</color>
+	<color name="troublecode_text">#1A1A1A</color>
+
+	<color name="ic_launcher_background">#20242A</color>
 </resources>

@@ -1,7 +1,7 @@
-EcmDroid
---------
+BuellTune
+---------
 
-EcmDroid is an Android application to diagnose and configure Buell
+BuellTune is an Android application to diagnose and configure Buell
 Motorcycles with a DDFI(-2, -3) ECM.
 
 Communication with the ECM is achieved through a Bluetooth-, BLE- or
@@ -28,7 +28,7 @@ Factory race ECMs can usually be identified by the ***engraved*** RACE USE ONLY 
 Pairing is not required for BLE serial adapters.
 
 Also checkout [ecmsim](https://github.com/ecmdroid/ecmsim) which can
-be used for testing/debugging ecmdroid without a real ECM.
+be used for testing/debugging buelltune without a real ECM.
 
 ## Running the simulator
 
@@ -50,7 +50,7 @@ the bundled `BUEIB` fixtures (`app/src/androidTest/resources/BUEIB.eeprom`,
 `BUEIB_log.bin`) on TCP port `6280` — a different port than ecmsim's own
 default of `6275`, so it won't collide with an instance you're already
 running manually. Once it logs `Waiting for incoming connection on port
-6280...`, point EcmDroid's TCP/IP connection at that port on the host
+6280...`, point BuellTune's TCP/IP connection at that port on the host
 running the simulator.
 
 Override the model, port, EEPROM dump, or log file with Gradle project

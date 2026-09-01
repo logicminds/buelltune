@@ -1,6 +1,6 @@
-# EcmDroid Developer Guide
+# BuellTune Developer Guide
 
-Technical/architecture reference for working on the EcmDroid codebase: a
+Technical/architecture reference for working on the BuellTune codebase: a
 native Android (plain Java, no DI/Compose/coroutines) diagnostic and tuning
 app for Buell DDFI(-1,-2,-3) motorcycle ECMs.
 
@@ -308,14 +308,14 @@ disabled (required by Android 6–11 for BLE scans).
 
 ### USB device whitelist
 
-`app/src/main/res/xml/device_filter.xml` lists the USB VID/PIDs EcmDroid
+`app/src/main/res/xml/device_filter.xml` lists the USB VID/PIDs BuellTune
 declares support for via the `USB_DEVICE_ATTACHED` intent filter (FTDI,
 Silicon Labs CP210x, Prolific PL2303x, QinHeng CH34x/CH9102F, and several
 CDC-ACM devices such as Arduino/Teensyduino/Pi Pico). `MainActivity.findCOMDevice()`
 also independently probes via `UsbSerialProber` at connect time, so a device
 not in the manifest whitelist can still be used if selected manually and
 matched by the prober — the whitelist mainly controls which devices
-auto-launch EcmDroid when plugged in.
+auto-launch BuellTune when plugged in.
 
 ## 6. ECM: the Central Facade
 

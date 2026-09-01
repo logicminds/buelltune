@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  BuellTune launcher icon - monochrome (Android 13+ themed-icon) layer.
+  Same tachometer-gauge silhouette as ic_launcher_foreground.xml, collapsed to a
+  single fill; the system substitutes its own themed color at render time.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Dial rim, true transparent center via evenOdd -->
+    <path
+        android:fillColor="#FF000000"
+        android:fillType="evenOdd"
+        android:pathData="M24.00,54.00 a30.00,30.00 0 1,0 60.00,0 a30.00,30.00 0 1,0 -60.00,0 Z
+                           M30.00,54.00 a24.00,24.00 0 1,0 48.00,0 a24.00,24.00 0 1,0 -48.00,0 Z" />
+
+    <!-- Tick marks around the sweep -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M32.45,65.65 L33.13,66.84 L38.24,63.69 L37.73,62.80 Z
+                           M29.80,57.83 L29.95,58.67 L33.88,57.91 L33.75,57.21 Z
+                           M29.95,49.33 L29.80,50.17 L33.75,50.79 L33.88,50.09 Z
+                           M33.13,41.16 L32.45,42.35 L37.73,45.20 L38.24,44.31 Z
+                           M38.58,34.96 L37.93,35.51 L40.55,38.53 L41.10,38.07 Z
+                           M46.02,30.83 L45.22,31.13 L46.65,34.86 L47.33,34.62 Z
+                           M54.68,29.51 L53.32,29.51 L53.48,35.51 L54.52,35.51 Z
+                           M62.78,31.13 L61.98,30.83 L60.67,34.62 L61.35,34.86 Z
+                           M70.07,35.51 L69.42,34.96 L66.90,38.07 L67.45,38.53 Z
+                           M75.55,42.35 L74.87,41.16 L69.76,44.31 L70.27,45.20 Z
+                           M78.20,50.17 L78.05,49.33 L74.12,50.09 L74.25,50.79 Z
+                           M78.05,58.67 L78.20,57.83 L74.25,57.21 L74.12,57.91 Z
+                           M74.87,66.84 L75.55,65.65 L70.27,62.80 L69.76,63.69 Z" />
+
+    <!-- Redline wedge -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M83.54,48.79 L83.80,50.52 L83.95,52.26 L84.00,54.00 L83.95,55.74 L83.80,57.48 L83.54,59.21 L83.19,60.92 L82.74,62.60 L82.19,64.26 L81.55,65.88 L80.81,67.46 L79.98,69.00 L75.22,66.25 L75.89,65.00 L76.50,63.70 L77.02,62.38 L77.47,61.03 L77.84,59.65 L78.13,58.25 L78.33,56.84 L78.46,55.42 L78.50,54.00 L78.46,52.58 L78.33,51.16 L78.13,49.75 Z" />
+
+    <!-- Needle counterweight tail -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M56.40,51.08 L47.06,57.27 L46.33,54.15 L57.45,55.55 Z" />
+
+    <!-- Needle -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M56.40,51.08 L76.80,48.29 L76.96,48.97 L57.45,55.55 Z" />
+
+    <!-- Hub -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M50.40,54.00 a3.60,3.60 0 1,0 7.20,0 a3.60,3.60 0 1,0 -7.20,0 Z" />
+
+    <!-- Spark accent -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M79.80,44.75 L81.56,47.95 L79.80,51.15 L78.04,47.95 Z" />
+</vector>

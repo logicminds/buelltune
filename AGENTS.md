@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-EcmDroid is a native Android diagnostic and tuning app for Buell motorcycles running Zeeltronic/ecmspy-derived DDFI(-1,-2,-3) engine control modules (ECMs). It connects to the ECM over Bluetooth Classic, Bluetooth Low Energy (BLE), or USB-to-serial adapters to:
+BuellTune is a native Android diagnostic and tuning app for Buell motorcycles running Zeeltronic/ecmspy-derived DDFI(-1,-2,-3) engine control modules (ECMs). It connects to the ECM over Bluetooth Classic, Bluetooth Low Energy (BLE), or USB-to-serial adapters to:
 
 - Read live runtime data (RPM, TPS, CLT, fueling, timing, etc.)
 - Read/write EEPROM configuration (calibration tables, scalars, bitfields)

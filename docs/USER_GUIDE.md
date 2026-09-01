@@ -1,6 +1,6 @@
-# EcmDroid User Guide
+# BuellTune User Guide
 
-EcmDroid is an Android app for diagnosing and tuning Buell motorcycles that run a
+BuellTune is an Android app for diagnosing and tuning Buell motorcycles that run a
 Zeeltronic/ecmspy-derived DDFI(-1, -2, -3) Engine Control Module (ECM). It talks
 directly to the ECM over the motorcycle's factory diagnostic connector, using a
 Bluetooth, Bluetooth LE, or USB-to-serial adapter.
@@ -11,10 +11,10 @@ documentation, see [`DEVELOPER_GUIDE.md`](DEVELOPER_GUIDE.md).
 
 ## Table of Contents
 
-1. [What EcmDroid Can Do](#1-what-ecmdroid-can-do)
+1. [What BuellTune Can Do](#1-what-buelltune-can-do)
 2. [Supported Motorcycles / ECMs](#2-supported-motorcycles--ecms)
 3. [Hardware You Need](#3-hardware-you-need)
-4. [Installing EcmDroid](#4-installing-ecmdroid)
+4. [Installing BuellTune](#4-installing-buelltune)
 5. [Connecting to the ECM](#5-connecting-to-the-ecm)
 6. [App Settings](#6-app-settings)
 7. [Screen-by-Screen Guide](#7-screen-by-screen-guide)
@@ -26,7 +26,7 @@ documentation, see [`DEVELOPER_GUIDE.md`](DEVELOPER_GUIDE.md).
 
 ---
 
-## 1. What EcmDroid Can Do
+## 1. What BuellTune Can Do
 
 - Identify the connected ECM (type, protocol, serial number, manufacturing date,
   calibration ID).
@@ -44,7 +44,7 @@ documentation, see [`DEVELOPER_GUIDE.md`](DEVELOPER_GUIDE.md).
   MegaLogViewer (`.msl`) format for graphing/analysis.
 - Look up factory torque specifications for Buell XB fasteners.
 
-EcmDroid does **not** contain any tuning tables/maps editor beyond what the ECM
+BuellTune does **not** contain any tuning tables/maps editor beyond what the ECM
 exposes as named EEPROM variables — it is a diagnostic and calibration tool,
 not a stand-alone fuel/ignition map editor.
 
@@ -77,7 +77,7 @@ string won't parse) — switch the protocol and reconnect.
 
 You need an adapter that plugs into the motorcycle's diagnostic connector
 (under the seat on "S" models, behind the front mask on "R" models) and
-exposes a serial link to your phone/tablet. EcmDroid supports four transport
+exposes a serial link to your phone/tablet. BuellTune supports four transport
 types:
 
 | Type | Notes |
@@ -88,14 +88,14 @@ types:
 | **TCP/IP** | Connect to a Bluetooth-to-WiFi or serial-to-network bridge by host/port (advanced/legacy option). |
 
 For **Classic Bluetooth**, pair the adapter first using Android's own
-**Settings → Bluetooth** app — EcmDroid does not do OS-level pairing itself.
+**Settings → Bluetooth** app — BuellTune does not do OS-level pairing itself.
 For **BLE**, no separate pairing step is needed; the app scans for and
 connects to the adapter directly.
 
 Also check out [ecmsim](https://github.com/ecmdroid/ecmsim), a standalone ECM
-simulator you can use to try EcmDroid without a real motorcycle.
+simulator you can use to try BuellTune without a real motorcycle.
 
-## 4. Installing EcmDroid
+## 4. Installing BuellTune
 
 - Requires **Android 8.0 (API 26) or later**.
 - Install the APK from your preferred source (F-Droid/GitHub releases/Play
@@ -106,12 +106,12 @@ simulator you can use to try EcmDroid without a real motorcycle.
 
 ### Permissions
 
-EcmDroid will ask for, or use, the following at runtime:
+BuellTune will ask for, or use, the following at runtime:
 
 - **Nearby devices (Bluetooth Scan/Connect)** — required to list and connect
   to Bluetooth/BLE adapters (Android 12+).
 - **Location** — required by Android itself for classic BLE scanning on
-  Android 6–11 (`ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION`). EcmDroid
+  Android 6–11 (`ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION`). BuellTune
   does not use your location for anything else; if location services are
   turned off it automatically falls back to classic Bluetooth discovery for
   BLE devices instead.
@@ -119,7 +119,7 @@ EcmDroid will ask for, or use, the following at runtime:
   see recording status from the notification shade (Android 13+ requires you
   to grant this explicitly).
 - **Storage folder access** — you choose a folder (via the system file
-  picker) where EEPROM dumps and log files are saved; EcmDroid never gets
+  picker) where EEPROM dumps and log files are saved; BuellTune never gets
   broad storage access.
 
 ## 5. Connecting to the ECM
@@ -134,7 +134,7 @@ EcmDroid will ask for, or use, the following at runtime:
    - **USB-to-serial**: plug in the adapter (or it may already be attached);
      grant the USB permission prompt when Android shows it.
    - **TCP/IP**: connects automatically to the host/port set in Settings.
-3. The button turns **gray** while connecting, then **green** once EcmDroid
+3. The button turns **gray** while connecting, then **green** once BuellTune
    has successfully identified the ECM. Tap it again anytime to disconnect.
 
 If the connect button stays red or you get a "Could not open COM port" /
@@ -158,7 +158,7 @@ icon) → **Settings**:
 | Hide non-existent EEPROM variables | On the Setup screen, hides parameters that don't apply to your detected ECM model. |
 | Enable EEPROM burning | **Off by default.** Must be turned on before you can write (burn) any changes back to the ECM. Read this twice before enabling — see [§10](#10-safety-reading-vs-writing-burning). |
 | Optimized burning | Only available once burning is enabled. When on, only EEPROM pages you actually changed are re-written, which is faster and reduces write-cycle wear. |
-| Keep screen on | Prevents the screen from locking while EcmDroid is in the foreground (handy for long logging sessions or a phone mounted on the bike). |
+| Keep screen on | Prevents the screen from locking while BuellTune is in the foreground (handy for long logging sessions or a phone mounted on the bike). |
 
 The **ECM Protocol** selector (Stock/P&A vs. Factory Race) lives on the main
 ECM Information screen, not in Settings — see [§2](#2-supported-motorcycles--ecms).
@@ -253,7 +253,7 @@ xborgforum community wiki. No connection required; purely informational.
   `<ECM-ID>_yyyyMMdd-hhmmss.xpr` in your chosen storage folder. This is the
   same `.xpr` format used by ECMSpy, so files are interchangeable with that
   tool. Legacy `.epr` dumps can also be loaded (not saved).
-- **Load**: EEPROM screen menu → **Load**, pick a file. EcmDroid detects the
+- **Load**: EEPROM screen menu → **Load**, pick a file. BuellTune detects the
   ECM type from the file size; if more than one ECM type shares that size,
   you'll be prompted to pick the correct one. If you're connected to a real
   ECM, the loaded file's ID must match the connected ECM's ID.
@@ -287,7 +287,7 @@ interrupted or done with mismatched data** — treat it with respect:
 - Burning is **disabled by default**. You must explicitly enable it under
   **Settings → Enable EEPROM burning**, and the app shows an extra warning
   dialog every time you burn.
-- Before writing, EcmDroid re-reads the ECM's ID/version and refuses to burn
+- Before writing, BuellTune re-reads the ECM's ID/version and refuses to burn
   if it doesn't match the EEPROM data you're about to write (protects against
   writing one motorcycle's tune to a different ECM).
 - Don't disconnect, lose Bluetooth/BLE range, or let your phone sleep during
@@ -306,14 +306,14 @@ interrupted or done with mismatched data** — treat it with respect:
 | "No USB COM Devices available" | USB-serial adapter not recognized/plugged in, or your phone/OS doesn't support USB host mode. Check the adapter uses one of the supported chipsets (FTDI, CP210x, PL2303, CH340/CH341/CH9102, or a CDC-ACM device such as Arduino). |
 | "Give USB Permission" / connection fails after that prompt | Re-plug the adapter and accept the Android USB permission dialog when it appears. |
 | BLE device doesn't show up while scanning | On Android 6–11, BLE scanning requires system Location Services to be turned on. Turn on Location, or let the app fall back to classic discovery. Also confirm Bluetooth is enabled. |
-| Classic Bluetooth device not in the list | Pair it first in Android's own Settings → Bluetooth app, then reopen EcmDroid. |
+| Classic Bluetooth device not in the list | Pair it first in Android's own Settings → Bluetooth app, then reopen BuellTune. |
 | Connected, but ECM Information fields stay blank/N/A | ECM took the version request but didn't answer as expected — usually a protocol/baud mismatch, or a loose diagnostic-connector cable. Reseat the connector and retry. |
 | Trouble reading/writing EEPROM mid-operation | Stay in range and keep the screen awake; retry the Fetch/Burn. If a Burn is refused with an ID-mismatch error, you loaded/prepared data for a different ECM than the one currently connected. |
-| Log file location not writable | Set/repick the storage folder in Settings before recording — the picker grants EcmDroid persistent access to that folder only. |
+| Log file location not writable | Set/repick the storage folder in Settings before recording — the picker grants BuellTune persistent access to that folder only. |
 
 ## 12. Privacy
 
 See [`privacy-policy.md`](../privacy-policy.md) for the full policy. In short:
-EcmDroid does not collect or transmit any personal data; all ECM data,
+BuellTune does not collect or transmit any personal data; all ECM data,
 EEPROM dumps, and logs stay on your device and in the storage folder you
 choose.

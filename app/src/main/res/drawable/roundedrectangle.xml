@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
 	   android:shape="rectangle">
-	<solid android:color="#EEE"/>
+	<solid android:color="@color/input_field_background"/>
 
 	<!--
 	<gradient android:startColor="#FFFFFF" android:endColor="#AAAAFF"
@@ -15,5 +15,5 @@
 	<corners android:radius="4dp"/>
 	<stroke
 		android:width="1dp"
-		android:color="#CCCCCC"/>
+		android:color="@color/input_field_stroke"/>
 </shape>

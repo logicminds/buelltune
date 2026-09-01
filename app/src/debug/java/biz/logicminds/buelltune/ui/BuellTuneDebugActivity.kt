@@ -40,7 +40,9 @@ class BuellTuneDebugActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            BuellTuneNavHost()
+            BuellTuneTheme {
+                BuellTuneNavHost()
+            }
         }
     }
 }
