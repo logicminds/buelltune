@@ -88,6 +88,17 @@ class MainActivityBluetoothPermissionInstrumentedTest {
 
     @After
     fun tearDown() {
+        // This test never taps through the real GrantPermissionsActivity - it
+        // resolves the permission via `pm grant` and calls
+        // onRequestPermissionsResult directly instead (see the class doc).
+        // That real system permission activity/dialog, if requestPermissions()
+        // actually launched one, is therefore never dismissed by a real user
+        // interaction and can linger on screen, stealing window focus from
+        // every Espresso assertion in every test that runs after this one in
+        // the same suite (see the RootViewWithoutFocusException failures
+        // that motivated this). A BACK press closes it before ActivityScenario
+        // tears down MainActivity itself.
+        runShellCommand("input keyevent ${android.view.KeyEvent.KEYCODE_BACK}")
         // Leave the real OS permission state as this suite found it so unrelated
         // tests elsewhere in the run are never left with BLUETOOTH_CONNECT revoked.
         runShellCommand("pm grant ${context.packageName} ${Manifest.permission.BLUETOOTH_CONNECT}")

@@ -22,6 +22,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
@@ -36,6 +37,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TestRule
 import org.junit.runner.RunWith
 import java.io.File
 import java.io.FileOutputStream
@@ -78,9 +80,19 @@ class EcmServiceBroadcastInstrumentedTest {
     // UI, so without an explicit grant, startForeground()'s notification
     // silently never posts on API 33+ (the foreground *service* state
     // still applies - it just has no visible notification to assert on).
+    // POST_NOTIFICATIONS is only a runtime-dangerous permission from API 33
+    // (TIRAMISU) onward; below that it's a normal, install-time-granted
+    // permission, and GrantPermissionRule's `pm grant` shell call fails
+    // outright ("Failed to grant permissions") if asked to grant a
+    // permission the platform doesn't treat as revocable - confirmed on a
+    // real API 26 run.
     @get:Rule
-    val notificationPermissionRule: GrantPermissionRule =
-        GrantPermissionRule.grant(android.Manifest.permission.POST_NOTIFICATIONS)
+    val notificationPermissionRule: TestRule =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            GrantPermissionRule.grant(android.Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            TestRule { base, _ -> base }
+        }
 
     private lateinit var context: Context
     private lateinit var fakeServer: FakeTcpEcmServer
