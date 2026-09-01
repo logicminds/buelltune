@@ -1,0 +1,57 @@
+name: tag-release
+
+# Fires when a `release/vX.Y.Z` PR (opened by create-release.yml) merges into
+# main. Tags the merge commit with the matching `vX.Y.Z` and dispatches the
+# `Release` workflow against that tag -- a plain `git push` of the tag here
+# uses the default GITHUB_TOKEN, which GitHub deliberately does not let
+# trigger `push`-event workflows (recursion guard), so the dispatch below is
+# what actually kicks off the build+publish, not the tag push itself.
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+  actions: write # required to dispatch the Release workflow below
+
+jobs:
+  tag:
+    name: Tag merged release PR
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Determine tag and verify it matches versionName
+        id: version
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          TAG="${BRANCH#release/}"
+          TAG_VERSION="${TAG#v}"
+          VERSION_NAME=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          if [ "$TAG_VERSION" != "$VERSION_NAME" ]; then
+            echo "::error::Branch $BRANCH implies version $TAG_VERSION but app/build.gradle.kts versionName is $VERSION_NAME at the merge commit."
+            exit 1
+          fi
+          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists -- refusing to move it."
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Trigger the Release workflow for this tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release.yml --ref "${{ steps.version.outputs.tag }}"
