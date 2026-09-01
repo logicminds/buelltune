@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-	<string name="app_name">EcmDroid</string>
+	<string name="app_name">BuellTune</string>
 
 	<string name="navigation_drawer_open">Open navigation drawer</string>
 	<string name="navigation_drawer_close">Close navigation drawer</string>
@@ -236,7 +236,6 @@
 	<string name="connection_lost">Connection to ECM lost</string>
 	<string name="live_data_off">Live Data Off</string>
 	<string name="live_data_on">Live Data On</string>
-	<string name="ecmdroid">EcmDroid</string>
 	<string name="the_buell_ecm_diagnostics_tool">The Buell ECM Diagnostics Tool</string>
 	<string name="keep_screen_on_summary">Keep Screen on while recording a log</string>
 	<string name="keep_screen_on_title">Keep Screen On</string>

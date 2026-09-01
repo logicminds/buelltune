@@ -801,7 +801,7 @@ Gates 2 and 4 are jointly measured: their union must cover all seven original te
 
 - Migrating any individual screen (Setup, DataChannels, EEPROM editor, TroubleCodes, ActiveTests, Log, TorqueValues) to Compose.
 - Deleting legacy `Fragment`/`Preference`/`AsyncTask` code — unsafe to remove while any screen still depends on it.
-- Visual rebrand: app icon, launcher name, in-app "EcmDroid" string references, `docs/USER_GUIDE.md`'s product naming, and other BuellTune branding/UI-copy work beyond the applicationId/package rename (R1).
+- Visual rebrand: app icon, launcher name, in-app "EcmDroid" string references, `docs/USER_GUIDE.md`'s product naming, and other BuellTune branding/UI-copy work beyond the applicationId/package rename (R1). **Partially superseded 2026-09-01** — see Scope Amendment below; the launcher label and About-screen naming/fork-attribution slice is picked up now (`buelltune-xzm`). The app icon and `docs/USER_GUIDE.md` product-naming pass remain deferred.
 - Play Store relisting and F-Droid publishing (#20).
 - Hosted CI (e.g. GitHub Actions) running the new JVM/`ecmsim` suites automatically — this plan makes the tests runnable, not necessarily wired into a pipeline.
 - Issues #13, #4, #3, #24 — unrelated to compatibility/compliance and out of scope for this slice.
@@ -814,6 +814,14 @@ Gates 2 and 4 are jointly measured: their union must cover all seven original te
 - Parameterizing the remaining raw SQL string concatenation inherited from `DatabaseVariableProvider` where U5's DAO port does not already eliminate it.
 - Consolidating the ~12 scattered preference keys (across `Constants`, `strings.xml`, activity-private prefs, and hardcoded literals) into one typed accessor.
 - Migrating `FetchTask`/`BurnTask` off `AsyncTask` — they are UI-coupled and belong with the EEPROM screen's migration slice.
+
+### Scope Amendment — 2026-09-01: display name and About-screen fork attribution
+
+User-directed follow-up, tracked as `buelltune-xzm`. Picks up the first slice of the "Visual rebrand" item deferred above — display name and legal/attribution text only, not the app icon or `docs/USER_GUIDE.md`'s product-naming pass, which stay deferred.
+
+- R18 (new). The app's user-visible display name — launcher label (`@string/app_name`), nav-drawer header, and the About screen's title/heading — reads "BuellTune", not "EcmDroid". The About screen (`app/src/main/assets/about.html`) credits the current BuellTune maintainer, credits the prior EcmDroid developers (Michel Marti and the other original copyright holders already listed there), and states in its own text that BuellTune is a hard fork of EcmDroid (KD1) — not affiliated with or endorsed by the upstream `ecmdroid/ecmdroid` project. Michel Marti's original GPLv3 copyright notice is preserved, not replaced, per License §5(a): a modified work must carry prominent notices stating it was modified and giving a relevant date, without erasing the prior notices it is required to keep intact.
+- Files: `app/src/main/res/values/strings.xml` (`app_name`; the redundant `ecmdroid` string is folded into `app_name` rather than kept as a second literal of the same value), `app/src/main/res/layout/nav_header_main.xml` (points at `@string/app_name` instead of the now-removed `ecmdroid` string), `app/src/main/assets/about.html`.
+- Verification: `./gradlew assembleDebug` compiles; the About screen (`AboutActivity` → `about.html`) and the nav-drawer header render the new text on-device/emulator.
 
 <!-- ce-section: work-relationships -->
 ## How This Work Fits Together
