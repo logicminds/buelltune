@@ -107,28 +107,24 @@ public class EEPROMFragment extends Fragment implements CellEditorDialogListener
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
-		switch (item.getItemId()) {
-			case R.id.fetch:
-				new FetchTask(getActivity()) {
-					@Override
-					protected void onPostExecute(Exception result) {
-						super.onPostExecute(result);
-						GridView gridview = (GridView) getView().findViewById(R.id.eepromGrid);
-						adapter = new EEPROMAdapter(getActivity(), ecm.getEEPROM(), COLS);
-						gridview.setAdapter(adapter);
-					}
-				}.start();
-				break;
-			case R.id.burn:
-				new BurnTask(getActivity()).start();
-				break;
-			case R.id.save:
-				String fn = String.format("%s_%s%s", ecm.getEEPROM().getId(), DateFormat.format("yyyyMMdd-kkmmss", System.currentTimeMillis()), Constants.XPR_FILE_SUFFIX);
-				this.saveFile(fn);
-				break;
-			case R.id.load:
-				this.loadFile();
-				break;
+		int id = item.getItemId();
+		if (id == R.id.fetch) {
+			new FetchTask(getActivity()) {
+				@Override
+				protected void onPostExecute(Exception result) {
+					super.onPostExecute(result);
+					GridView gridview = (GridView) getView().findViewById(R.id.eepromGrid);
+					adapter = new EEPROMAdapter(getActivity(), ecm.getEEPROM(), COLS);
+					gridview.setAdapter(adapter);
+				}
+			}.start();
+		} else if (id == R.id.burn) {
+			new BurnTask(getActivity()).start();
+		} else if (id == R.id.save) {
+			String fn = String.format("%s_%s%s", ecm.getEEPROM().getId(), DateFormat.format("yyyyMMdd-kkmmss", System.currentTimeMillis()), Constants.XPR_FILE_SUFFIX);
+			this.saveFile(fn);
+		} else if (id == R.id.load) {
+			this.loadFile();
 		}
 		return true;
 	}

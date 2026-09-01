@@ -103,25 +103,19 @@ public class CellEditorDialogFragment extends DialogFragment implements android.
 	 */
 	public void onClick(View v) {
 		int value = getArguments().getByte(VALUE) & 0xff;
-		switch (v.getId()) {
-			case R.id.b_d2:
-				value >>= 1;
-				break;
-			case R.id.b_t2:
-				value <<= 1;
-				break;
-			case R.id.b_ff:
-				value = 0xFF;
-				break;
-			case R.id.b_zero:
-				value = 0;
-				break;
-			case R.id.b_m16:
-				value -= 16;
-				break;
-			case R.id.b_p16:
-				value += 16;
-				break;
+		int id = v.getId();
+		if (id == R.id.b_d2) {
+			value >>= 1;
+		} else if (id == R.id.b_t2) {
+			value <<= 1;
+		} else if (id == R.id.b_ff) {
+			value = 0xFF;
+		} else if (id == R.id.b_zero) {
+			value = 0;
+		} else if (id == R.id.b_m16) {
+			value -= 16;
+		} else if (id == R.id.b_p16) {
+			value += 16;
 		}
 		value = Math.max(0, Math.min(255, value));
 		getArguments().putByte(VALUE, (byte) value);
