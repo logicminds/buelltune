@@ -1,0 +1,84 @@
+name: create-release
+
+# Manually triggered: the person cutting a release picks a bump type from
+# the dropdown ("Run workflow" in the Actions UI, or `gh workflow run
+# create-release.yml -f bump=minor`). The workflow bumps app/build.gradle.kts,
+# generates a CHANGELOG.md entry from the commits since the previous
+# release, and opens a PR for review -- it never pushes to main directly
+# and never tags/publishes anything itself.
+#
+# Merging the resulting PR does not build/publish a release. Once merged,
+# tag the merge commit (`git tag vX.Y.Z && git push origin vX.Y.Z`) to
+# trigger .github/workflows/release.yml, which builds the signed APK and
+# publishes it to GitHub Releases.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        type: choice
+        required: true
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-release-pr:
+    name: Bump version, update changelog, open PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # prepare_release.py needs full history + tags: it finds the
+          # previous release via `git describe --tags` (or, absent any
+          # tag yet, the commit that introduced CHANGELOG.md) and lists
+          # every commit since as the new changelog entry.
+          fetch-depth: 0
+
+      - name: Prepare release (bump version + changelog)
+        id: prepare
+        run: python3 scripts/prepare_release.py "${{ inputs.bump }}" --notes-out "$RUNNER_TEMP/release_notes.md" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure no existing PR/branch for this version
+        run: |
+          if git ls-remote --exit-code --heads origin "release/v${{ steps.prepare.outputs.version }}" >/dev/null 2>&1; then
+            echo "::error::Branch release/v${{ steps.prepare.outputs.version }} already exists -- close/delete its PR before re-running."
+            exit 1
+          fi
+
+      - name: Commit version bump and changelog entry
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "release/v${{ steps.prepare.outputs.version }}"
+          git add app/build.gradle.kts CHANGELOG.md
+          git commit -m "chore(release): v${{ steps.prepare.outputs.version }}"
+          git push origin "release/v${{ steps.prepare.outputs.version }}"
+
+      - name: Open release pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Version bump: \`${{ steps.prepare.outputs.previous_version }}\` -> \`${{ steps.prepare.outputs.version }}\` (versionCode ${{ steps.prepare.outputs.version_code }}, ${{ inputs.bump }} bump)"
+            echo
+            cat "$RUNNER_TEMP/release_notes.md"
+            echo
+            echo "---"
+            echo "Merging this PR does **not** publish a release. After merging, tag the merge commit to trigger the \`release\` workflow:"
+            echo '```'
+            echo "git tag v${{ steps.prepare.outputs.version }} && git push origin v${{ steps.prepare.outputs.version }}"
+            echo '```'
+          } > "$RUNNER_TEMP/pr_body.md"
+
+          gh pr create \
+            --base main \
+            --head "release/v${{ steps.prepare.outputs.version }}" \
+            --title "Release v${{ steps.prepare.outputs.version }}" \
+            --body-file "$RUNNER_TEMP/pr_body.md"

@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ecmdroid"
+rootProject.name = "buelltune"
 include(":app")

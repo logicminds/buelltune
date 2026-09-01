@@ -1,0 +1,172 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# AGP 9.2.1 / compileSdk 36 and the third_party/ecmsim submodule's Maven
+# build both require JDK 21+ (see AGENTS.md "Development Commands" /
+# gradle/ecmsim.gradle.kts) -- one JDK for every job keeps ecmsimBuild's
+# -PecmsimJavaHome override unnecessary in CI.
+env:
+  JAVA_VERSION: "21"
+
+jobs:
+  # Fails fast on a tampered/unknown gradle-wrapper.jar before any job
+  # spends time on a checkout+build. gradle/actions/setup-gradle also
+  # validates the wrapper on every run, so this is a cheap early signal,
+  # not the only check.
+  validate-wrapper:
+    name: Validate Gradle wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: gradle/actions/wrapper-validation@v6
+
+  # Lint + JVM unit tests (./gradlew test, see AGENTS.md "Testing & QA")
+  # + debug/release assembly. Release is unsigned in CI: keystore.properties
+  # is git-ignored and absent, so app/build.gradle.kts's signingEnabled
+  # check disables signing automatically (documented repo behavior).
+  build-and-test:
+    name: Lint, unit test, assemble
+    needs: validate-wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Lint
+        run: ./gradlew lint --continue
+
+      - name: Unit tests
+        run: ./gradlew test --continue
+
+      - name: Assemble debug + release APKs
+        run: ./gradlew assembleDebug assembleRelease
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-*.html
+          if-no-files-found: ignore
+
+      - name: Upload unit test report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-test-report
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v7
+        with:
+          name: apks
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+  # Real-protocol coverage against the ecmsim ECM simulator (see AGENTS.md
+  # "ecmsim-backed JVM integration suite"): connect/version handshake,
+  # EEPROM page fetch/write, realtime polling, an active-test trigger, a
+  # checksum-corrupted-frame rejection, and connection-loss scenarios, all
+  # over a real TCP socket. ecmsimBuild (a dependency of the Gradle task
+  # below) needs the third_party/ecmsim submodule checked out and a JDK 21+
+  # JAVA_HOME to run its own Maven wrapper.
+  ecmsim-integration-test:
+    name: ecmsim integration tests
+    needs: validate-wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Run ecmsim-backed integration suite
+        run: ./gradlew ecmsimIntegrationTest
+
+      - name: Upload integration test report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ecmsim-integration-report
+          path: app/build/reports/tests/ecmsimIntegrationTest/
+          if-no-files-found: ignore
+
+  # Instrumented tests (app/src/androidTest) on a hardware-accelerated
+  # Linux emulator: minSdk (26) and a modern targetSdk-adjacent API (34;
+  # compileSdk 36 system images are not yet reliably published to the
+  # emulator SDK channel this action installs from).
+  instrumented-tests:
+    name: Instrumented tests (API ${{ matrix.api-level }})
+    needs: validate-wrapper
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [26, 34]
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run instrumented tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disable-animations: true
+          # Headless CI emulators can boot with the screen off/locked, which
+          # leaves every window permanently without focus and fails every
+          # Espresso assertion with RootViewWithoutFocusException (a known
+          # reactivecircus/android-emulator-runner Linux-runner issue, not
+          # an app bug). Waking the screen, dismissing the keyguard, and
+          # disabling the screen-off timeout before the test run fixes it.
+          script: |
+            adb shell svc power stayon true
+            adb shell wm dismiss-keyguard
+            adb shell input keyevent 82
+            ./gradlew connectedDebugAndroidTest
+
+      - name: Upload instrumented test report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: instrumented-test-report-api${{ matrix.api-level }}
+          path: app/build/reports/androidTests/connected/
+          if-no-files-found: ignore

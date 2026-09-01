@@ -1,0 +1,110 @@
+name: Release
+
+# Builds a signed release APK and publishes it to GitHub Releases so users
+# can download and install it directly. Triggered by either:
+#   - a pushed tag matching `vX.Y.Z` (final release) or `vX.Y.Z-<suffix>`
+#     (pre-release, e.g. `v0.100.0-beta1`) -- pushed manually for ad hoc
+#     beta builds, or automatically once .github/workflows/tag-release.yml
+#     tags a merged release PR's merge commit;
+#   - workflow_dispatch, either run manually (pick a tag under "Use
+#     workflow from") or dispatched programmatically by tag-release.yml
+#     via `gh workflow run release.yml --ref <tag>` (tag pushes made with
+#     the default GITHUB_TOKEN don't trigger `push` listeners, so
+#     tag-release.yml dispatches this workflow explicitly instead).
+on:
+  push:
+    tags:
+      - "v*.*.*"
+      - "v*.*.*-*"
+  workflow_dispatch: {}
+
+# gh release create / uploading assets needs write access to repo contents.
+permissions:
+  contents: write
+
+# AGP 9.2.1 / compileSdk 36 requires JDK 21+ (see AGENTS.md).
+env:
+  JAVA_VERSION: "21"
+
+jobs:
+  release:
+    name: Build and publish signed release APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Verify tag and versionName agree
+        run: |
+          if [ "${{ github.ref_type }}" != "tag" ]; then
+            echo "::error::This workflow must run against a release tag (vX.Y.Z or vX.Y.Z-suffix), not a branch. Re-run workflow_dispatch and pick a tag under 'Use workflow from'."
+            exit 1
+          fi
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          TAG_BASE_VERSION="${TAG_VERSION%%-*}"
+          VERSION_NAME=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          if [ "$TAG_BASE_VERSION" != "$VERSION_NAME" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} (base version $TAG_BASE_VERSION) does not match app/build.gradle.kts versionName ($VERSION_NAME). Bump versionCode/versionName and push a matching tag."
+            exit 1
+          fi
+          IS_PRERELEASE=false
+          if [ "$TAG_VERSION" != "$TAG_BASE_VERSION" ]; then
+            IS_PRERELEASE=true
+          fi
+          echo "RELEASE_VERSION=$TAG_VERSION" >> "$GITHUB_ENV"
+          echo "IS_PRERELEASE=$IS_PRERELEASE" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Verify build (lint + unit tests)
+        run: ./gradlew lint test --continue
+
+      - name: Decode release keystore
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+
+      - name: Write signing config
+        env:
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+        run: |
+          cat > keystore.properties <<EOF
+          keyAlias=$RELEASE_KEY_ALIAS
+          keyPassword=$RELEASE_KEY_PASSWORD
+          storeFile=$RUNNER_TEMP/release.keystore
+          storePassword=$RELEASE_KEYSTORE_PASSWORD
+          EOF
+
+      - name: Assemble signed release APK
+        run: ./gradlew assembleRelease
+
+      - name: Stage release assets
+        run: |
+          mkdir -p release-assets
+          NAME="buelltune-${GITHUB_REF_NAME}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "release-assets/$NAME"
+          ( cd release-assets && sha256sum "$NAME" > "$NAME.sha256" )
+
+      - name: Clean up signing material
+        if: always()
+        run: rm -f keystore.properties "$RUNNER_TEMP/release.keystore"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PRERELEASE_FLAG=()
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            PRERELEASE_FLAG=(--prerelease)
+          fi
+          gh release create "${GITHUB_REF_NAME}" \
+            release-assets/* \
+            --title "BuellTune ${RELEASE_VERSION}" \
+            --generate-notes \
+            "${PRERELEASE_FLAG[@]}"

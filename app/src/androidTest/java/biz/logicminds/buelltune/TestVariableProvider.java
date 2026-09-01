@@ -1,0 +1,233 @@
+/*
+ EcmDroid - Android Diagnostic Tool for Buell Motorcycles
+ Copyright (C) 2012 by Michel Marti
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version 3
+ of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+package biz.logicminds.buelltune;
+
+import biz.logicminds.buelltune.Variable.DataType;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import java.io.IOException;
+import java.util.Collection;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import androidx.test.core.app.ApplicationProvider;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+
+
+@RunWith(AndroidJUnit4.class)
+public class TestVariableProvider{
+	private VariableProvider provider;
+
+	@Before
+	public void setUp() {
+		provider = VariableProvider.getInstance(ApplicationProvider.getApplicationContext());
+	}
+
+	@Test
+	public void testRtVariableNames() {
+		Collection<String> vars = provider.getRtVariableNames("BUE2D");
+		assertEquals(111, vars.size());
+		assertTrue(vars.contains("RPM"));
+		assertTrue(vars.contains("TPD"));
+		assertTrue(vars.contains("CLT"));
+	}
+
+	@Test
+	public void testScalarRtVariableNames() {
+		Collection<String> vars = provider.getScalarRtVariableNames("BUE2D");
+		assertEquals(79, vars.size());
+		assertTrue(vars.contains("O2 ADC"));
+		assertTrue(vars.contains("ETS1 ADC"));
+		assertTrue(vars.contains("EGO1 Corr."));
+	}
+
+	@Test
+	public void testBitfieldRtVariableNames() {
+		Collection<String> vars = provider.getBitfieldRtVariableNames("BUE2D");
+		assertEquals(32, vars.size());
+		assertTrue(vars.contains("Flags0"));
+		assertTrue(vars.contains("CDiag7"));
+		assertTrue(vars.contains("DOut2 Feedb."));
+	}
+
+	@Test
+	public void testRtVariable() {
+		Variable v = provider.getRtVariable("BUE2D", "pw2");
+		assertNotNull(v);
+		assertEquals(ECM.Type.DDFI3, v.getEcmType());
+		assertEquals("pw2", v.getName());
+		assertEquals(Variable.DataType.SCALAR, v.getType());
+		assertEquals(2, v.getSize());
+		assertEquals(23, v.getOffset());
+		assertEquals("Milliseconds", v.getUnit());
+		assertEquals(0.001330, v.getScale(), 0.000001);
+		assertEquals(0.0, v.getTranslate(), 0.1);
+		assertEquals("Fuel Pulsewidth Rear", v.getLabel());
+		assertEquals("0.00", v.getFormat());
+		assertEquals(0.0, v.getLow(), 0.1);
+		assertEquals(0.1159248615, v.getHigh(), 0.01);
+		assertEquals(0, v.getUlow(), 0.1);
+		assertEquals(65535, v.getUhigh());
+	}
+
+	@Test
+	public void testRTParsing() throws IOException {
+		byte[] data = TestUtils.readRTData();
+		Variable v = provider.getRtVariable("BUEIB", "AFV");
+		assertNotNull(v);
+		v.refreshValue(data);
+		assertEquals("100.0%", v.getFormattedValue());
+	}
+
+	@Test
+	public void testAllRTVariables() throws IOException {
+		byte[] data = TestUtils.readRTData();
+		Collection<String> vars = provider.getRtVariableNames("BUEIB");
+		for (String var : vars) {
+			Variable v = provider.getRtVariable("BUEIB", var);
+			assertNotNull(v);
+			v.refreshValue(data);
+			System.out.println("name: " + v.getName() + ", raw: " + v.getRawValue() + ", formatted: " + v.getFormattedValue());
+		}
+	}
+
+	@Test
+	public void testEEPROMVariable() throws IOException {
+		byte[] eeprom = TestUtils.readEEPROM();
+		Variable var = provider.getEEPROMVariable("BUEIB", "Country_ID");
+		assertNotNull(var);
+		var.refreshValue(eeprom);
+		assertEquals(77, var.getRawValue());
+		var = provider.getEEPROMVariable("BUEIB", "KMFG_Year");
+		assertNotNull(var);
+		var.refreshValue(eeprom);
+		assertEquals(6, var.getRawValue());
+		var = provider.getEEPROMVariable("BUEIB", "KMFG_Serial");
+		assertNotNull(var);
+		assertEquals(2, var.getWidth());
+		assertEquals(1, var.getElementCount());
+		assertEquals(2, var.getSize());
+		assertEquals(0, var.getRows());
+		assertEquals(0, var.getCols());
+		assertEquals(DataType.VALUE, var.getType());
+		var.refreshValue(eeprom);
+		assertEquals(204, var.getRawValue());
+
+		var.parseValue(0xCDDC);
+		assertEquals(0xCDDC, var.getIntValue());
+		var.updateValue(eeprom);
+		assertEquals((byte) 0xCD, eeprom[var.getOffset() + 1]);
+		assertEquals((byte) 0xDC, eeprom[var.getOffset()]);
+	}
+
+	@Test
+	public void testNameLookup() {
+		assertNull(provider.getName("DOES_NOT_EXIST"));
+		assertEquals("System Configuration", provider.getName("KConfig"));
+		assertEquals("Open loop learn", provider.getName("KConfig[3]"));
+		assertNull(provider.getName("KConfig[10]"));
+	}
+
+	@Test
+	public void testAxis() throws IOException {
+		byte[] eeprom = TestUtils.readEEPROM();
+		Variable var = provider.getEEPROMVariable("BUEIB", "Tab_Fuel_Load_Ax");
+		assertNotNull(var);
+		assertEquals(DataType.AXIS, var.getType());
+		var.refreshValue(eeprom);
+		assertEquals(12, var.getSize());
+		assertEquals(1, var.getWidth());
+		assertEquals(1, var.getCols());
+		assertEquals(12, var.getRows());
+		int[] expected = {10, 15, 20, 30, 40, 50, 60, 80, 100, 125, 175, 255};
+		for (int i = 0; i < expected.length; i++) {
+			assertEquals(String.valueOf(expected[i]), var.getFormattedValueAt(i));
+			assertEquals(expected[i], var.getIntValueAt(i));
+		}
+		try {
+			var.getIntValueAt(expected.length);
+			fail("ArrayIndexOutOfBoundsException expected.");
+		} catch (ArrayIndexOutOfBoundsException ignored) {
+		}
+
+		var = provider.getEEPROMVariable("BUEIB", "Tab_Fuel_RPM_Ax");
+		assertNotNull(var);
+		assertEquals(DataType.AXIS, var.getType());
+		var.refreshValue(eeprom);
+		assertEquals(26, var.getSize());
+		assertEquals(2, var.getWidth());
+		assertEquals(1, var.getCols());
+		assertEquals(13, var.getRows());
+		expected = new int[]{8000, 7000, 6000, 5000, 4000, 3400, 2900, 2400, 1900, 1350, 1000, 800, 0};
+		for (int i = 0; i < expected.length; i++) {
+			assertEquals(String.valueOf(expected[i]), var.getFormattedValueAt(i));
+			assertEquals(expected[i], var.getIntValueAt(i));
+		}
+		try {
+			var.getIntValueAt(expected.length);
+			fail("ArrayIndexOutOfBoundsException expected.");
+		} catch (ArrayIndexOutOfBoundsException ignored) {
+		}
+	}
+
+	@Test
+	public void testTable() throws IOException {
+		byte[] eeprom = TestUtils.readEEPROM();
+		Variable var = provider.getEEPROMVariable("BUEIB", "Tab_ABP_Conv");
+		assertNotNull(var);
+		assertEquals(DataType.TABLE, var.getType());
+		assertEquals(5, var.getRows());
+		assertEquals(2, var.getCols());
+		var.refreshValue(eeprom);
+		int[][] expected = {{125, 100}, {127, 60}, {170, 80}, {213, 100}, {250, 120}};
+		for (int r = 0; r < expected.length; r++) {
+			for (int c = 0; c < expected[0].length; c++) {
+				assertEquals(String.valueOf(expected[r][c]), var.getFormattedValueAt(r, c));
+				assertEquals(expected[r][c], var.getIntValueAt(r, c));
+			}
+		}
+		try {
+			var.getFormattedValueAt(expected.length + 1, expected[0].length + 1);
+			fail("ArrayIndexOutOfBoundsException expected.");
+		} catch (ArrayIndexOutOfBoundsException ignored) {
+		}
+
+		var.parseValueAt(0, 0, 42);
+		var.parseValueAt(0, 1, 99);
+		var.parseValueAt(1, 0, 88);
+		var.parseValueAt(1, 1, 77);
+		assertEquals(42, var.getIntValueAt(0, 0));
+		assertEquals(99, var.getIntValueAt(0, 1));
+		assertEquals(88, var.getIntValueAt(1, 0));
+		assertEquals(77, var.getIntValueAt(1, 1));
+
+		var.updateValue(eeprom);
+		int o = var.getOffset();
+		assertEquals(42, eeprom[o++]);
+		assertEquals(99, eeprom[o++]);
+		assertEquals(88, eeprom[o++]);
+		assertEquals(77, eeprom[o++]);
+	}
+}
+

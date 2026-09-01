@@ -30,8 +30,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 
-import org.ecmdroid.R;
-import org.ecmdroid.fragments.MainFragment;
+import biz.logicminds.buelltune.R;
+import biz.logicminds.buelltune.fragments.MainFragment;
 
 import java.util.ArrayList;
 import java.util.Collections;

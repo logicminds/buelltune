@@ -1,0 +1,39 @@
+/*
+ EcmDroid - Android Diagnostic Tool for Buell Motorcycles
+ Copyright (C) 2012 by Michel Marti
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version 3
+ of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+package biz.logicminds.buelltune
+
+import android.content.Context
+import biz.logicminds.buelltune.Constants.DataSource
+
+/**
+ * Provider for Runtime- and EEPROM BitSet definitions.
+ */
+abstract class BitSetProvider {
+
+    abstract fun getBitSet(ecmId: String, name: String, source: DataSource): BitSet?
+
+    companion object {
+        /**
+         * Legacy singleton facade (KTD5): resolves the process-wide
+         * [AppContainer] from [ctx] instead of building/caching its own
+         * `@SuppressLint("StaticFieldLeak")` instance.
+         */
+        @JvmStatic
+        fun getInstance(ctx: Context): BitSetProvider = AppContainer.from(ctx).bitSetProvider
+    }
+}

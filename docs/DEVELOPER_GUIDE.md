@@ -33,30 +33,29 @@ For end-user documentation, see [`USER_GUIDE.md`](USER_GUIDE.md).
 ## 1. Project Layout
 
 ```
-ecmdroid/
+buelltune/
 ├── app/
 │   ├── build.gradle.kts              # module config, versionCode/versionName, signing
 │   ├── proguard-rules.pro
 │   └── src/
 │       ├── main/
 │       │   ├── AndroidManifest.xml
-│       │   ├── assets/ecmdroid.db.gz # bundled gzip'd SQLite ECM-definitions DB
+│       │   ├── assets/buelltune.db.gz # bundled gzip'd SQLite ECM-definitions DB
 │       │   ├── assets/about.html     # About screen content
 │       │   ├── resources/            # runtime1.tab/runtime2.tab/runtime3.tab (Bin2Msl offset tables)
 │       │   ├── res/                  # layouts, menus, xml preference trees, strings
 │       │   └── java/
-│       │       ├── org/ecmdroid/                              # core domain
-│       │       ├── org/ecmdroid/activities/                   # MainActivity, PrefsActivity, AboutActivity
-│       │       ├── org/ecmdroid/fragments/                    # one fragment per drawer screen
-│       │       ├── org/ecmdroid/task/                         # AsyncTask I/O helpers
-│       │       ├── org/ecmdroid/util/                         # Bin2MslConverter
+│       │       ├── biz/logicminds/buelltune/                              # core domain
+│       │       ├── biz/logicminds/buelltune/activities/                   # MainActivity, PrefsActivity, AboutActivity
+│       │       ├── biz/logicminds/buelltune/fragments/                    # one fragment per drawer screen
+│       │       ├── biz/logicminds/buelltune/task/                        # AsyncTask I/O helpers
+│       │       ├── biz/logicminds/buelltune/util/                        # Bin2MslConverter
 │       │       └── de/kai_morich/simple_bluetooth_le_terminal/ # vendored BLE UART transport
 │       └── androidTest/
-│           ├── java/org/ecmdroid/         # instrumented JUnit4 tests
+│           ├── java/biz/logicminds/buelltune/         # instrumented JUnit4 tests
 │           └── resources/                 # .eeprom/.bin/.msl fixtures used by tests
 ├── gradle/libs.versions.toml          # central dependency/plugin version catalog
 ├── scripts/mysql2sqlite.sh            # ecmspy.com MySQL dump → SQLite converter
-├── scripts/mklocalversion             # git-derived build version string generator
 ├── README.md, README.db, CHANGES, privacy-policy.md, LICENSE
 └── docs/USER_GUIDE.md, docs/DEVELOPER_GUIDE.md   (this file)
 ```
@@ -83,17 +82,22 @@ APK outputs land in `app/build/outputs/apk/{debug,release}/`.
 - **Signing**: create a git-ignored `keystore.properties` at repo root with
   `keyAlias`, `keyPassword`, `storeFile`, `storePassword` (see
   `app/build.gradle.kts`); without it, release builds are unsigned.
-- **Version string**: `scripts/mklocalversion` runs at build time and
-  generates `org.ecmdroid.VCS.LOCAL_VERSION` from git (`-g<hash>` suffix if
-  untagged HEAD, `-dirty` if the working tree has uncommitted changes). Bump
-  the shipped version by editing `versionCode`/`versionName` in
+- **Version string**: bump the shipped version by editing `versionCode`/`versionName` in
   `app/build.gradle.kts`.
 - **Dependencies** are centralized in `gradle/libs.versions.toml`; add/bump
   there and reference via `libs.*` aliases in `app/build.gradle.kts` — never
   hardcode Maven coordinates directly in the module build file.
-- **Hardware-free testing**: use [ecmsim](https://github.com/ecmdroid/ecmsim)
-  (a standalone ECM protocol simulator) to exercise the app without a real
-  motorcycle.
+- **Hardware-free testing**: `ecmsim` (github.com/ecmdroid/ecmsim, a
+  standalone ECM protocol simulator) is vendored as a pinned submodule at
+  `third_party/ecmsim`. `./gradlew ecmsimRun` builds it via its own Maven
+  wrapper (JDK 21+ required — separate `JAVA_HOME`/`-PecmsimJavaHome=`
+  requirement from the Android build) and starts it against the bundled
+  `BUEIB` fixtures on TCP port 6280 (`./gradlew ecmsimBuild` builds only);
+  see README.md's "Running the simulator" section for options.
+- **`ecmsim`-backed JVM integration suite** (R16, R17, AE5): drives the
+  same simulator from a JUnit suite instead of a manual connection —
+  `./gradlew ecmsimIntegrationTest -PecmsimJavaHome=/path/to/jdk21`; see
+  §13 Testing.
 
 ## 3. High-Level Architecture
 
@@ -105,21 +109,21 @@ framework — components reach each other via `getInstance(Context)` statics or
 
 ```mermaid
 flowchart LR
-    subgraph UI["UI Layer (org.ecmdroid.activities / .fragments)"]
+    subgraph UI["UI Layer (biz.logicminds.buelltune.activities / .fragments)"]
         MA[MainActivity\ndrawer + connect UI]
         FRAG[Fragments\nMain/Setup/EEPROM/DataChannel/\nLog/TroubleCode/ActiveTests]
     end
     subgraph SVC["EcmDroidService"]
         RT[ReaderThread\npolls ECM.readRTData()]
     end
-    subgraph CORE["Core Domain (org.ecmdroid)"]
+    subgraph CORE["Core Domain (biz.logicminds.buelltune)"]
         ECMc[ECM\nsingleton facade]
         PDU[PDU\nwire framing]
         EEPROM[EEPROM / Page]
         VAR[Variable / BitSet / Bit]
         PROV[DatabaseVariableProvider\nDatabaseBitSetProvider]
     end
-    subgraph DB["SQLite (ecmdroid.db, from assets/ecmdroid.db.gz)"]
+    subgraph DB["SQLite (buelltune.db, from assets/buelltune.db.gz)"]
     end
     subgraph XPORT["Transport"]
         BT[BluetoothSocket\nClassic SPP]
@@ -144,20 +148,20 @@ flowchart LR
 **Connect → Setup EEPROM → Poll runtime data → Log / Act** is the core data
 flow:
 
-1. **Connect** — `MainActivity` (`app/src/main/java/org/ecmdroid/activities/MainActivity.java`)
+1. **Connect** — `MainActivity` (`app/src/main/java/biz/logicminds/buelltune/activities/MainActivity.java`)
    drives device selection (paired classic Bluetooth device, BLE scan result
    via `DevicesFragment`, or a probed `UsbSerialPort`) and calls one of
    `ECM.connect(...)`.
-2. **`ECM`** (`app/src/main/java/org/ecmdroid/ECM.java`) is a singleton
+2. **`ECM`** (`app/src/main/java/biz/logicminds/buelltune/ECM.java`) is a singleton
    facade abstracting the transport (`BluetoothSocket` / BLE `SerialSocket` /
    `UsbSerialPort` / TCP `Socket`) and the protocol variant (`STOCK` vs.
    `FACTORY_RACE`, which changes the PDU ECM address byte between `0x42` and
    `0x55`). It exposes `setupEEPROM()`, `readRTData()`, `getErrors()`,
    `runTest()`, `readEEPromPage()`, `writeEEPromPage()`.
-3. **`PDU`** (`app/src/main/java/org/ecmdroid/PDU.java`) encodes/decodes the
+3. **`PDU`** (`app/src/main/java/biz/logicminds/buelltune/PDU.java`) encodes/decodes the
    wire protocol: `SOH`/`EOH`/`SOT`/`EOT` framing, XOR checksum, static
    factories `getRequest()`/`setRequest()`/`commandRequest()`.
-4. **EEPROM read/write** — `FetchTask`/`BurnTask` (`app/src/main/java/org/ecmdroid/task/`,
+4. **EEPROM read/write** — `FetchTask`/`BurnTask` (`app/src/main/java/biz/logicminds/buelltune/task/`,
    `AsyncTask` subclasses of `ProgressDialogTask`) page through the EEPROM via
    `ECM.readEEPromPage()`/`writeEEPromPage()`; `EEPROM` (`EEPROM.java`) is a
    paginated byte array with per-page dirty tracking, so burns can be
@@ -174,11 +178,11 @@ flow:
    which cache lookups in an in-memory `HashMap` (the SQLite DB is hit
    frequently during live polling, so uncached lookups would be too slow).
 7. **Logging** — recorded binary logs convert to MegaLogViewer text format
-   via `Bin2MslConverter` (`app/src/main/java/org/ecmdroid/util/`).
+   via `Bin2MslConverter` (`app/src/main/java/biz/logicminds/buelltune/util/`).
 
 ## 4. The Wire Protocol (PDU)
 
-Source of truth: `app/src/main/java/org/ecmdroid/PDU.java`.
+Source of truth: `app/src/main/java/biz/logicminds/buelltune/PDU.java`.
 
 ### Frame layout
 
@@ -315,7 +319,7 @@ auto-launch EcmDroid when plugged in.
 
 ## 6. ECM: the Central Facade
 
-`ECM` (`app/src/main/java/org/ecmdroid/ECM.java`) is a per-process singleton
+`ECM` (`app/src/main/java/biz/logicminds/buelltune/ECM.java`) is a per-process singleton
 (`ECM.getInstance(Context)`) holding all live state: connection, protocol,
 the current `EEPROM` object, and the last runtime-data snapshot (`rtData`).
 
@@ -417,8 +421,8 @@ EEPROM bitsets). Built exclusively by `ECM.getErrors()`.
 ## 8. Bundled ECM-Definitions Database
 
 The app ships a gzip-compressed SQLite database,
-`app/src/main/assets/ecmdroid.db.gz`, sourced from ecmspy.com MySQL dumps.
-Despite the `.gz` suffix, code opens it as `assets.open("ecmdroid.db")`
+`app/src/main/assets/buelltune.db.gz`, sourced from ecmspy.com MySQL dumps.
+Despite the `.gz` suffix, code opens it as `assets.open("buelltune.db")`
 (`DBHelper.setupDB()`, `DBHelper.java:65-66`) — Android's `AssetManager`
 transparently gzip-decompresses any packaged asset stored under a `.gz`
 name when it's opened without that suffix, so no explicit decompression
@@ -444,7 +448,7 @@ component runs.
 variable pickers (`... AND secret=0` in the `DatabaseVariableProvider`/
 `DatabaseBitSetProvider` queries).
 
-`DatabaseVariableProvider`/`DatabaseBitSetProvider` (`app/src/main/java/org/ecmdroid/`)
+`DatabaseVariableProvider`/`DatabaseBitSetProvider` (`app/src/main/java/biz/logicminds/buelltune/`)
 run raw SQL via `SQLiteDatabase.rawQuery()` (no ORM) and cache every lookup
 in a `HashMap` keyed by `rt#<name>`/`ee#<name>` (variables) or `<name>`
 (bitsets); the cache is cleared whenever the connected ECM's ID changes.
@@ -456,12 +460,12 @@ every live-poll cycle, so uncached queries would be a real perf problem.
 See [`README.db`](../README.db) for the exact steps; summary:
 
 1. Import an ecmspy.com MySQL backup into a scratch MySQL DB.
-2. `sh scripts/mysql2sqlite.sh -u<user> -p<password> <db> > ecmdroid.sq3`
+2. `sh scripts/mysql2sqlite.sh -u<user> -p<password> <db> > buelltune.sq3`
    (awk-based MySQL-dump → SQLite statement converter).
 3. Strip all column `COMMENT`s from the generated SQL (unsupported by
    SQLite3).
-4. `sqlite3 assets/ecmdroid.db < ecmdroid.sq3` to build the file.
-5. `gzip -f assets/ecmdroid.db` to replace `assets/ecmdroid.db.gz`.
+4. `sqlite3 assets/buelltune.db < buelltune.sq3` to build the file.
+5. `gzip -f assets/buelltune.db` to replace `assets/buelltune.db.gz`.
 6. **Bump `DB_VERSION` in `DBHelper.java`** so installed apps re-extract the
    new database on next launch — forgetting this step means the new data is
    bundled but never actually installed on any upgraded device.
@@ -471,7 +475,7 @@ See [`README.db`](../README.db) for the exact steps; summary:
 No coroutines/RxJava/Executors anywhere in the app. Three threading patterns
 are used, consistently:
 
-1. **`AsyncTask` subclasses of `ProgressDialogTask`** (`app/src/main/java/org/ecmdroid/task/`)
+1. **`AsyncTask` subclasses of `ProgressDialogTask`** (`app/src/main/java/biz/logicminds/buelltune/task/`)
    for one-shot ECM I/O with a modal progress dialog:
    - `ProgressDialogTask` (base): freezes screen orientation
      (`Utils.freezeOrientation`) for the duration, shows a non-cancelable
@@ -513,7 +517,7 @@ are used, consistently:
 
 ## 10. UI Layer
 
-`MainActivity` (`app/src/main/java/org/ecmdroid/activities/MainActivity.java`)
+`MainActivity` (`app/src/main/java/biz/logicminds/buelltune/activities/MainActivity.java`)
 is the single navigation-drawer host; `switchToFragment(int id)` swaps the
 `R.id.content_frame` fragment. A `isTransactionSafe` flag defers fragment
 switches that arrive while the activity is mid-transition (e.g. during
@@ -600,7 +604,7 @@ category:
 | 2 (DDFI-2) | `BUECB`, `BUEGB`, `BUEIB`, `BUEIC`, `B2RIB` | 103–107 |
 | 3 (DDFI-3) | `BUEOD`, `BUEWD`, `BUEYD`, `BUEZD`, `BUE1D`, `BUE2D`, `BUE3D`, `B3R1D`, `B3R3D` | 135 |
 
-### Conversion (`Bin2MslConverter`, `app/src/main/java/org/ecmdroid/util/Bin2MslConverter.java`)
+### Conversion (`Bin2MslConverter`, `app/src/main/java/biz/logicminds/buelltune/util/Bin2MslConverter.java`)
 
 `convert(InputStream, PrintWriter)` (an `Observable`, so callers such as
 `LogFragment.StopTask` can `addObserver()` for progress-string updates every
@@ -631,7 +635,7 @@ independent data sources that happen to describe the same underlying bytes.
 
 ## 13. Testing
 
-Only **instrumented** tests exist, under `app/src/androidTest/java/org/ecmdroid/`
+Only **instrumented** tests exist, under `app/src/androidTest/java/biz/logicminds/buelltune/`
 (JUnit 4 + `AndroidJUnit4` runner; Espresso is a declared dependency but
 unused by current tests). There is no `app/src/test/` JVM unit-test source
 set and no CI pipeline configured in this repo — tests are run locally.
@@ -662,7 +666,43 @@ against real captured data.
 
 Naming convention for new tests: `Test<Component>.java`, methods prefixed
 `test`, placed alongside the existing classes under
-`app/src/androidTest/java/org/ecmdroid/`.
+`app/src/androidTest/java/biz/logicminds/buelltune/`.
+
+### `ecmsim`-backed JVM integration suite (R16, R17, AE5)
+
+`app/src/test/java/biz/logicminds/buelltune/integration/` is a headless
+JVM/JUnit 4 suite that drives `TcpTransport`, `ECM`, and `PollRecordLoop`
+over TCP against a real, locally spawned `ecmsim` process — no device,
+emulator, or manual connection required. `EcmSimProtocolIntegrationTest`
+covers connect/version handshake, EEPROM page fetch, an EEPROM write
+command (asserted as request/ACK shape only — `ecmsim`'s `CMD_SET` handler
+ACKs without persisting, so read-back is not asserted), realtime polling
+across several frames, an active-test trigger, and a checksum-corrupted
+response (rejected promptly, not hung — corruption is injected at the wire
+level via `PduRelay` since `ecmsim` never produces a bad checksum itself).
+`EcmSimConnectionLossIntegrationTest` covers R17: killing the simulator
+process mid-recording, and separately closing the TCP socket without
+killing it — both must flip `PollRecordLoop.state` to `Failed(Io)`, stop
+polling, and flush/close the recording sink with every pre-drop frame
+intact.
+
+`ECM`'s EEPROM-definitions/variable/bitset lookups are backed by a plain
+`org.xerial:sqlite-jdbc` implementation (`JdbcEcmDefinitionsProvider`,
+`JdbcVariableProvider`, `JdbcBitSetProvider`, same package) reading the
+bundled `buelltune.db.gz` directly — never Room, which needs an Android
+`Context`/SQLite implementation this suite deliberately runs without.
+
+Excluded from the default `test`/`testDebugUnitTest` task (starting a real
+simulator process per test class is too slow for the inner dev loop) via a
+JUnit `@Category` marker; run it on its own:
+
+```bash
+./gradlew ecmsimIntegrationTest -PecmsimJavaHome=/path/to/jdk21
+```
+
+The task depends on `ecmsimBuild`, so `third_party/ecmsim/target/ecmsim.jar`
+is built automatically if missing (same JDK 21+ requirement as
+`ecmsimBuild`/`ecmsimRun`, §2).
 
 ## 14. Code Conventions
 
@@ -698,7 +738,7 @@ Naming convention for new tests: `Test<Component>.java`, methods prefixed
 ## 15. Common Pitfalls
 
 - **Forgetting to bump `DBHelper.DB_VERSION`** after regenerating
-  `ecmdroid.db.gz` — installed apps only re-extract the asset when the
+  `buelltune.db.gz` — installed apps only re-extract the asset when the
   version constant changes (§8).
 - **Editing page 0 semantics without reading `PAGE_ZERO_VARS_TO_WRITE`** —
   page 0 has a restricted write set on purpose (`ECM.java:121-124`); adding
