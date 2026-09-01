@@ -25,8 +25,8 @@ android {
     }
     defaultConfig {
         applicationId = "biz.logicminds.buelltune"
-        versionCode = 28
-        versionName = "0.99.8"
+        versionCode = 29
+        versionName = "0.100.0"
         minSdk = 26
         targetSdk = 36
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

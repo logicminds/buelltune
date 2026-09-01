@@ -11,3 +11,9 @@ non-merge commit landed since the previous release tag. Entries are reviewed
 in the release pull request before merging.
 
 ## [Unreleased]
+
+## [0.100.0] - 2026-09-01
+
+- Fix CI: lint baseline, androidTest dexing bug, and 6 real test bugs ([`f2ab7de`](https://github.com/logicminds/buelltune/commit/f2ab7de))
+- Fix CI: API26 permission-grant crash, dismiss lingering system dialog ([`5e3970f`](https://github.com/logicminds/buelltune/commit/5e3970f))
+- Fix CI: drain stale REALTIME_DATA broadcasts, wait for toggle state ([`fb0fe88`](https://github.com/logicminds/buelltune/commit/fb0fe88))
