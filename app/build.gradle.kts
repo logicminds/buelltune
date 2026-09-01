@@ -58,6 +58,16 @@ android {
             isReturnDefaultValues = true
         }
     }
+    lint {
+        // The 28 baselined MissingPermission findings all live in the
+        // vendored de.kai_morich.simple_bluetooth_le_terminal package
+        // (AGENTS.md: "treat as external, avoid unrelated edits") --
+        // pre-existing Bluetooth Classic/BLE calls never guarded by an
+        // explicit permission check. Baselining them (rather than
+        // disabling MissingPermission project-wide) keeps lint enforcing
+        // that check everywhere else, including any new first-party code.
+        baseline = file("lint-baseline.xml")
+    }
     sourceSets {
         getByName("main") {
             kotlin.srcDir("src/main/java")
@@ -120,6 +130,10 @@ dependencies {
     androidTestImplementation(libs.espresso.intents)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
+    // Registers a bare, manifest-declared androidx.activity.ComponentActivity
+    // for createAndroidComposeRule<ComponentActivity>() to launch -- debug-only
+    // per Compose's own testing setup guidance, never merged into release.
+    debugImplementation(libs.compose.ui.test.manifest)
 }
 
 // ecmsim-backed JVM integration suite (R16, R17, AE5, KTD7) -- every class

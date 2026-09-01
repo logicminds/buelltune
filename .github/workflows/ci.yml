@@ -151,7 +151,17 @@ jobs:
           target: google_apis
           profile: pixel_6
           disable-animations: true
-          script: ./gradlew connectedDebugAndroidTest
+          # Headless CI emulators can boot with the screen off/locked, which
+          # leaves every window permanently without focus and fails every
+          # Espresso assertion with RootViewWithoutFocusException (a known
+          # reactivecircus/android-emulator-runner Linux-runner issue, not
+          # an app bug). Waking the screen, dismissing the keyguard, and
+          # disabling the screen-off timeout before the test run fixes it.
+          script: |
+            adb shell svc power stayon true
+            adb shell wm dismiss-keyguard
+            adb shell input keyevent 82
+            ./gradlew connectedDebugAndroidTest
 
       - name: Upload instrumented test report
         if: always()

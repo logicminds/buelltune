@@ -24,6 +24,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.rule.GrantPermissionRule
 import androidx.test.rule.ServiceTestRule
 import biz.logicminds.buelltune.ECM
 import biz.logicminds.buelltune.PDU
@@ -70,6 +71,16 @@ class EcmServiceBroadcastInstrumentedTest {
 
     @get:Rule
     val serviceRule = ServiceTestRule()
+
+    // Production code only ever gets here after the user has already
+    // granted POST_NOTIFICATIONS through MainActivity's own runtime
+    // request flow; this test binds straight to EcmService and skips that
+    // UI, so without an explicit grant, startForeground()'s notification
+    // silently never posts on API 33+ (the foreground *service* state
+    // still applies - it just has no visible notification to assert on).
+    @get:Rule
+    val notificationPermissionRule: GrantPermissionRule =
+        GrantPermissionRule.grant(android.Manifest.permission.POST_NOTIFICATIONS)
 
     private lateinit var context: Context
     private lateinit var fakeServer: FakeTcpEcmServer

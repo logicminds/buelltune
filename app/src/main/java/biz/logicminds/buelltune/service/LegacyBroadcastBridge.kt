@@ -48,7 +48,7 @@ class LegacyBroadcastBridge(
     /** Begins collecting [loop]'s flows for the lifetime of [scope]. Call once, from [EcmService.onCreate]. */
     fun start() {
         loop.runtimeData
-            .onEach { context.sendBroadcast(Intent(EcmService.REALTIME_DATA)) }
+            .onEach { context.sendBroadcast(Intent(EcmService.REALTIME_DATA).setPackage(context.packageName)) }
             .launchIn(scope)
 
         // drop(1): a fresh collector always receives the StateFlow's current
@@ -63,13 +63,13 @@ class LegacyBroadcastBridge(
                     is RecordingState.Recording -> EcmService.RECORDING_STARTED
                     is RecordingState.Stopped -> EcmService.RECORDING_STOPPED
                 }
-                context.sendBroadcast(Intent(action))
+                context.sendBroadcast(Intent(action).setPackage(context.packageName))
             }
             .launchIn(scope)
 
         loop.state
             .filterIsInstance<ConnectionState.Failed>()
-            .onEach { context.sendBroadcast(Intent(EcmService.CONNECTION_LOST)) }
+            .onEach { context.sendBroadcast(Intent(EcmService.CONNECTION_LOST).setPackage(context.packageName)) }
             .launchIn(scope)
     }
 }

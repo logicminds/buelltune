@@ -94,7 +94,7 @@ class EEPROMFragmentSafInstrumentedTest {
     fun tearDown() {
         Intents.release()
         ecm.setEEPROM(null)
-        FixtureDocumentProvider.clear()
+        FixtureDocumentProvider.clear(context)
     }
 
     /**
@@ -108,11 +108,21 @@ class EEPROMFragmentSafInstrumentedTest {
     @Test
     fun loadingRealSafDocumentParsesToExpectedPageLayoutWithNoCrash() {
         val fixtureBytes = TestUtils.readEEPROM()
-        val uri = FixtureDocumentProvider.seed("BUEIB.eeprom", fixtureBytes)
+        val uri = FixtureDocumentProvider.seed(context, "BUEIB.eeprom", fixtureBytes)
         stubOpenDocument(uri)
 
         ActivityScenario.launch<MainActivity>(launchIntent(R.id.nav_eeprom)).use { scenario ->
             clickLoadMenuItem()
+            // AlertDialog.show() returns before WindowManager has finished
+            // attaching the dialog's window; Espresso's own idle-tracking
+            // doesn't always cover that handoff, so poll for it the same
+            // way the rest of this file waits for other async UI state
+            // instead of assuming it is already up.
+            waitFor {
+                runCatching {
+                    onView(withText("BUEIB")).inRoot(isDialog()).check(matches(isDisplayed()))
+                }.isSuccess
+            }
             onView(withText("BUEIB")).inRoot(isDialog()).perform(click())
 
             waitFor { ecm.isEepromRead() }
@@ -151,7 +161,7 @@ class EEPROMFragmentSafInstrumentedTest {
     @Test
     fun loadingUnrecognizedSizeFileShowsErrorToastWithoutCrashing() {
         val truncated = TestUtils.readEEPROM().copyOfRange(0, 600)
-        val uri = FixtureDocumentProvider.seed("truncated.eeprom", truncated)
+        val uri = FixtureDocumentProvider.seed(context, "truncated.eeprom", truncated)
         stubOpenDocument(uri)
         val eepromBefore = ecm.getEEPROM()
 
@@ -219,8 +229,15 @@ class EEPROMFragmentSafInstrumentedTest {
         System.arraycopy(fixtureBytes, 0, eeprom.getBytes()!!, 0, fixtureBytes.size)
         eeprom.setEepromRead(true)
         ecm.setEEPROM(eeprom)
+        // EEPROM.get() sizes its backing buffer to the eeprom table's xsize
+        // (1210 for BUEIB), not the raw fixture file's size (1206, the
+        // page-zero-less shape EEPROM.hasPageZero() tolerates) - saving
+        // pushes that whole buffer, so the expected bytes are the buffer
+        // itself (fixtureBytes plus its trailing zero-filled page zero),
+        // not the original fixture file.
+        val expectedBytes = eeprom.getBytes()!!.copyOf()
 
-        val uri = FixtureDocumentProvider.seed("save-target.eeprom", ByteArray(0))
+        val uri = FixtureDocumentProvider.seed(context, "save-target.eeprom", ByteArray(0))
         stubCreateDocument(uri)
 
         ActivityScenario.launch<MainActivity>(launchIntent(R.id.nav_eeprom)).use { scenario ->
@@ -228,9 +245,9 @@ class EEPROMFragmentSafInstrumentedTest {
             onView(withText(R.string.save_eeprom)).perform(click())
 
             waitFor {
-                FixtureDocumentProvider.bytesWrittenTo("save-target.eeprom")?.contentEquals(fixtureBytes) == true
+                FixtureDocumentProvider.bytesWrittenTo(context, "save-target.eeprom")?.contentEquals(expectedBytes) == true
             }
-            assertArrayEquals(fixtureBytes, FixtureDocumentProvider.bytesWrittenTo("save-target.eeprom"))
+            assertArrayEquals(expectedBytes, FixtureDocumentProvider.bytesWrittenTo(context, "save-target.eeprom"))
             assertEquals(Lifecycle.State.RESUMED, scenario.state)
         }
     }

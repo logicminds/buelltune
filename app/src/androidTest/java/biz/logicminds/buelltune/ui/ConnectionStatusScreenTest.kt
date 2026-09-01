@@ -17,6 +17,7 @@
  */
 package biz.logicminds.buelltune.ui
 
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -36,10 +37,14 @@ import org.junit.runner.RunWith
  * sandbox** (no device/emulator available); verified to compile via
  * `./gradlew assembleDebugAndroidTest`.
  *
- * Hosted on the real debug-only [BuellTuneDebugActivity] launcher entry
- * point rather than a bare test activity, then [FakeEcmLiveDataSource]
- * swaps in for [ServiceEcmLiveDataSource] via [ConnectionStatusScreen]'s
- * `viewModel` parameter - the same seam a real
+ * Hosted on a bare `ComponentActivity` (registered for Compose tests by the
+ * `ui-test-manifest` debug dependency) rather than the real
+ * [BuellTuneDebugActivity]: that activity's own `onCreate` already calls
+ * `setContent { BuellTuneNavHost() }`, and `ComposeTestRule.setContent` can't
+ * be called a second time on top of that (`IllegalStateException: ... has
+ * already set content`). [FakeEcmLiveDataSource] swaps in for
+ * [ServiceEcmLiveDataSource] via [ConnectionStatusScreen]'s `viewModel`
+ * parameter - the same seam a real
  * [biz.logicminds.buelltune.service.EcmService] connects through in
  * production, so no real service binding, broadcast registration, or ECM
  * connection is needed to exercise the reactive pipeline.
@@ -48,7 +53,7 @@ import org.junit.runner.RunWith
 class ConnectionStatusScreenTest {
 
     @get:Rule
-    val composeTestRule = createAndroidComposeRule<BuellTuneDebugActivity>()
+    val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
     fun rendersDisconnectedThenConnectedWithLiveRpm() {

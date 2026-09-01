@@ -23,10 +23,12 @@ import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -53,6 +55,13 @@ public class ManifestComplianceInstrumentedTest {
 
 	@Test
 	public void bluetoothScanIsDeclaredNeverForLocationOnTheRealInstalledPackage() throws PackageManager.NameNotFoundException {
+		// PackageInfo.REQUESTED_PERMISSION_NEVER_FOR_LOCATION is an API 31+
+		// OS concept: pre-S platforms don't track or report the flag bit at
+		// all, so this assertion is meaningless (and always false) below S
+		// regardless of what the manifest declares -- matching the R10/#10
+		// scope this test documents itself as covering ("the two API-31+
+		// manifest facts").
+		Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S);
 		PackageManager pm = context.getPackageManager();
 		PackageInfo info = pm.getPackageInfo(context.getPackageName(), PackageManager.GET_PERMISSIONS);
 		String[] permissions = info.requestedPermissions;

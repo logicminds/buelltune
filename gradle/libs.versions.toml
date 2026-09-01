@@ -44,6 +44,7 @@ compose-lifecycle-viewmodel = { group = "androidx.lifecycle", name = "lifecycle-
 compose-lifecycle-runtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version = "2.10.0" }
 compose-navigation = { group = "androidx.navigation", name = "navigation-compose", version = "2.9.8" }
 compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 sqlite-jdbc = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqliteJdbc" }
 
 [plugins]

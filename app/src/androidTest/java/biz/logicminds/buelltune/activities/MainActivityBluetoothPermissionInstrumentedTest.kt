@@ -36,6 +36,7 @@ import biz.logicminds.buelltune.R
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -103,8 +104,14 @@ class MainActivityBluetoothPermissionInstrumentedTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             // -- Denied: showDevices() must request the permission, not crash or
             // silently no-op, and must not yet show the paired-device dialog. --
+            // Real ActivityCompat.requestPermissions() on API 31+ launches the
+            // system's GrantPermissionsActivity in the foreground, which pauses
+            // MainActivity down to STARTED - that's the OS actually presenting a
+            // permission prompt, not a bug; asserting RESUMED here would mean
+            // the permission dialog never appeared. isAtLeast(STARTED) checks
+            // the one thing this step actually claims: no crash, not destroyed.
             scenario.onActivity { activity -> invokeShowDevices(activity) }
-            assertEquals(Lifecycle.State.RESUMED, scenario.state)
+            assertTrue(scenario.state.isAtLeast(Lifecycle.State.STARTED))
 
             // -- The permission is actually (re-)granted at the OS level... --
             runShellCommand("pm grant ${context.packageName} ${Manifest.permission.BLUETOOTH_CONNECT}")

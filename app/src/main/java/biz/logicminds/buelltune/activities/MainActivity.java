@@ -18,6 +18,7 @@
 package biz.logicminds.buelltune.activities;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.FragmentManager;
@@ -512,6 +513,13 @@ public class MainActivity extends AppCompatActivity
 			super.onPreExecute();
 		}
 
+		// btDevice is only ever populated by connect(BluetoothDevice)/connectBLE(BluetoothDevice),
+		// whose sole caller (the bonded-device picker built a few lines above) already gates
+		// BluetoothAdapter.getBondedDevices() on a granted BLUETOOTH_CONNECT permission check
+		// (see the checkSelfPermission/requestPermissions guard earlier in this class) -- lint
+		// can't see across that call chain, so this getName() is a verified false positive, not
+		// an unchecked call.
+		@SuppressLint("MissingPermission")
 		@Override
 		protected Exception doInBackground(Void... v) {
 			String target = null;
