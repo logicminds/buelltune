@@ -14,7 +14,7 @@ License: GPL v3 (`LICENSE`). Package/applicationId: `biz.logicminds.buelltune`.
 
 ## Architecture & Data Flow
 
-Legacy-style Java Android app: singleton hardware facade + background Service + fragment-based UI. No DI framework, no Room, no coroutines/RxJava — manual construction and `AsyncTask`/`Thread` throughout.
+Mixed Java/Kotlin Android app: singleton hardware facade + background Service + fragment-based UI, with the domain/transport/service/data layers ported to Kotlin (coroutines/`Flow`, Room) while the legacy screens stay Java (`AsyncTask`, `android.app.Fragment`) per the compatibility-bridge convention below. No DI framework.
 
 **Connect → Setup EEPROM → Poll runtime data → Log / Act**
 
@@ -73,17 +73,17 @@ Hardware-free ECM simulator: `third_party/ecmsim` is a pinned git submodule of `
 
 ## Code Conventions & Common Patterns
 
-- **Language**: pure Java 8 (source/target compatibility `1.8`). Gradle files use Kotlin DSL (`.kts`) but no Kotlin app code — do not introduce Kotlin without discussion.
+- **Language**: mixed Java 8 and Kotlin (source/target compatibility `17`, jvmTarget follows `compileOptions`). The domain (`PDU`, `ECM`, `EEPROM`, `Variable`, …), transport (`transport/`), service (`service/`), and data (`data/`) layers are Kotlin; the legacy Activities/Fragments/`AsyncTask` tasks stay Java and consume the Kotlin layers through a compatibility bridge (`AppContainer`, `LegacyBroadcastBridge`) — do not port a legacy screen to Kotlin without discussion.
 - **Naming**: classes PascalCase (`ECM`, `PDU`, `EEPROMFragment`); methods camelCase; constants UPPER_SNAKE_CASE; every class carries a `private static final String TAG` for `Log.d/i/w/e`.
 - **Error handling**: exceptions, not return codes — `PDU.validate()` throws `ParseException` on malformed packets; caller-level failures surface via `Toast` or `AlertDialog`.
-- **Threading**: no coroutines/RxJava/Executors. Patterns used:
+- **Threading**: legacy screens keep `AsyncTask`/plain `Thread`; the Kotlin service/transport layers use coroutines instead (`PollRecordLoop` on `Dispatchers.IO`, `EcmTransport.transact()` serialized per instance via `kotlinx.coroutines.sync.Mutex`). Patterns used:
   - `AsyncTask` subclasses of `ProgressDialogTask` (`FetchTask`, `BurnTask`) for ECM I/O with a modal progress dialog and screen-orientation freeze.
-  - `EcmDroidService.ReaderThread`: plain `Thread` with `synchronized`/`wait()`/`notify()` for the continuous poll loop.
+  - `PollRecordLoop` (Android-free, coroutine-based): replaces the legacy `EcmDroidService.ReaderThread`'s `Thread` + `synchronized`/`wait()`/`notify()` loop; hosted by `EcmService`.
   - UI updates communicated via `BroadcastReceiver` (`REALTIME_DATA`, `RECORDING_STARTED`/`RECORDING_STOPPED` intents), registered in `onResume()`/unregistered in `onPause()`.
-  - `MainActivity`/`LogFragment` bind to `EcmDroidService` via `ServiceConnection`.
+  - `MainActivity`/`LogFragment` bind to `EcmService` via `ServiceConnection`.
 - **Dependency management**: no DI framework. Singletons via static `getInstance(Context)` (e.g. `ECM.getInstance(...)`); fragments reach the host via `getActivity()`.
 - **State**: `ECM` singleton holds connection/protocol/EEPROM state; `SharedPreferences` for user settings (protocol, storage location, log interval, keep-screen-on); `MainActivity` persists the active drawer fragment across rotation via `savedInstanceState`.
-- **Database access**: raw SQL via `SQLiteDatabase.rawQuery()`, never an ORM. Wrap new lookups with an in-memory `HashMap` cache like `DatabaseVariableProvider`/`DatabaseBitSetProvider` do — the DB is queried frequently during live polling.
+- **Database access**: the bundled ECM definitions DB is served through Room (`data/Entities.kt`, `data/Daos.kt`, `EcmDefinitionsDatabase`); `DatabaseVariableProvider`/`DatabaseBitSetProvider` query the generated DAOs instead of raw SQL, still wrapped in an in-memory `HashMap` cache — the DB is queried frequently during live polling. New JVM-only lookups (tests, `ecmsim` integration) go through the plain JDBC-SQLite `JdbcEcmDefinitionsProvider` in `app/src/test/.../integration/` instead, since Room needs a real Android `Context`.
 - **Resource naming**: layouts named after the feature (`main.xml` ↔ `MainFragment`, `log.xml` ↔ `LogFragment`); menus `*_menu.xml`/`main_drawer.xml`; drawables descriptive (`ic_connected.xml`).
 - **Vendored code**: `de.kai_morich.simple_bluetooth_le_terminal` is a third-party BLE package kept in-tree — treat as external, avoid unrelated edits.
 
@@ -102,14 +102,14 @@ Hardware-free ECM simulator: `third_party/ecmsim` is a pinned git submodule of `
 ## Runtime/Tooling Preferences
 
 - Build exclusively through the Gradle wrapper (`./gradlew`, `gradlew.bat`) — do not rely on a globally installed Gradle; version is pinned (9.4.1) via `gradle/wrapper/gradle-wrapper.properties`.
-- Android Gradle Plugin 9.2.1, `compileSdk` 34, `targetSdk` 33, `minSdk` 26 (Android 8.0+).
-- No Kotlin, no Jetpack Compose, no Room, no Hilt/Dagger — keep additions consistent with the existing plain-Java/AndroidX-appcompat stack.
+- Android Gradle Plugin 9.2.1, `compileSdk` 36, `targetSdk` 36, `minSdk` 26 (Android 8.0+).
+- Kotlin (AGP 9's built-in Kotlin, KSP, Compose compiler) coexists with the legacy Java/AndroidX-appcompat stack per the Language convention above; Compose is wired for the debug-only `BuellTuneDebugActivity` shell only, not any shipped legacy screen.
 - Dependency versions are centralized in `gradle/libs.versions.toml` (version catalog) — add/bump deps there, reference via `libs.*` aliases in `app/build.gradle.kts`, not hardcoded coordinates.
 - `local.properties`/`keystore.properties` are git-ignored — never commit secrets or local SDK paths.
 
 ## Testing & QA
 
-- **Only instrumented tests exist**, under `app/src/androidTest/java/biz/logicminds/buelltune/` (JUnit 4 + `AndroidJUnit4` runner; Espresso dependency present but unused by current tests). There is no `app/src/test/` unit-test source set and no CI pipeline (no GitHub Actions/GitLab CI/Jenkins config) — tests run only locally/manually.
+- Both suites exist: `app/src/androidTest/java/biz/logicminds/buelltune/` (JUnit 4 + `AndroidJUnit4`, `connectedAndroidTest`) and `app/src/test/java/biz/logicminds/buelltune/` (JVM unit tests, `./gradlew test`, no device/emulator needed — covers the Kotlin domain/service layer). No CI pipeline (no GitHub Actions/GitLab CI/Jenkins config) — tests run only locally/manually.
 - Files: `TestECM`, `TestPDU`, `TestBin2Msl`, `TestBitSetProvider`, `TestEEPROM`, `TestUtils`, `TestVariableProvider`. Naming convention: `Test<Component>.java`, methods prefixed `test`.
 - Fixtures live in `app/src/androidTest/resources/` (`.eeprom` dumps, `.bin` runtime logs, `.msl` reference output) — reuse existing fixtures for parser/converter tests rather than inventing new binary formats.
 - Run tests with a connected device or emulator:

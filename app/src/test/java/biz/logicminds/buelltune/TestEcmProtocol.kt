@@ -46,6 +46,21 @@ class TestEcmProtocol {
 
     private fun newEcm(): ECM = ECM(NoOpVariableProvider(), NoOpBitSetProvider(), NoOpDefinitionsProvider(), null)
 
+    /**
+     * Regression lock for c04661b: [ECM.getEEPROMBit]/[ECM.getEEPROMValueNearOffset]
+     * used `getId()!!` and crashed instantly the moment a rider opened "ECM
+     * Parameters" or "Data Channels" with nothing connected -- the very first
+     * screen state every install boots into before a motorcycle is plugged
+     * in. Both must now short-circuit to `null`, matching [ECM.getEEPROMValue]'s
+     * existing null-safe convention, rather than throwing.
+     */
+    @Test
+    fun eepromLookupsReturnNullRatherThanThrowWhenDisconnected() {
+        val ecm = newEcm()
+        assertEquals(null, ecm.getEEPROMBit("SomeBit", 0))
+        assertEquals(null, ecm.getEEPROMValueNearOffset(10))
+    }
+
     @Test
     fun ioExceptionDuringReadRTDataLeavesEcmDisconnected() {
         ServerSocket(0).use { server ->

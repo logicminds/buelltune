@@ -235,7 +235,12 @@ class PollRecordLoop(
             readFailures = 0
             this.sink = sink
             val id = ecm.getEEPROM()?.id ?: "UNKWN"
-            sink.write(id.toByteArray().copyOfRange(0, 5))
+            try {
+                sink.write(id.toByteArray().copyOfRange(0, 5))
+            } catch (e: IOException) {
+                closeSinkLocked()
+                throw e
+            }
             recordingStarted = clock.currentTimeMillis()
             _recordingState.value = RecordingState.Recording
             ecm.setRecording(true)

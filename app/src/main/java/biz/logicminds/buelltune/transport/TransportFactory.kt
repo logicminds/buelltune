@@ -93,7 +93,13 @@ object TransportFactory {
     @JvmStatic
     fun usbSerial(port: UsbSerialPort): EcmTransport = UsbSerialTransport { listener ->
         val ioManager = SerialInputOutputManager(port, listener)
-        ioManager.start()
+        try {
+            ioManager.start()
+        } catch (e: Exception) {
+            runCatching { ioManager.stop() }
+            runCatching { port.close() }
+            throw e
+        }
         object : UsbSerialConnection {
             override fun write(data: ByteArray, timeoutMs: Int) = port.write(data, timeoutMs)
             override fun close() {
