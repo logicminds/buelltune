@@ -37,7 +37,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.IOException
-import java.io.InputStream
 import java.io.OutputStream
 
 /**
@@ -98,7 +97,7 @@ private sealed class UsbSerialEvent {
  * method, so this transport does not repeat the selection).
  *
  * `onNewData`/`onRunError` are wrapped with `callbackFlow` into a
- * [UsbSerialEvent] stream and fed into [UsbSerialInputStream], a small
+ * [UsbSerialEvent] stream and fed into [PolledByteQueueInputStream], a
  * thread-safe byte queue [PduFraming.readFrame] polls exactly like it
  * polls a real blocking [InputStream] - this queue, not a
  * `PipedInputStream`, is what replaces the deleted bridge. Writes go
@@ -116,18 +115,21 @@ class UsbSerialTransport(
     override val state: StateFlow<ConnectionState> = _state.asStateFlow()
 
     @Volatile private var connection: UsbSerialConnection? = null
-    @Volatile private var input: UsbSerialInputStream? = null
+    @Volatile private var input: PolledByteQueueInputStream? = null
     @Volatile private var eventsScope: CoroutineScope? = null
+
+    /** Reused across every [transact] call (KTD11: safe because `mutex` serializes them). */
+    private val frameBuffer = ByteArray(256)
 
     override suspend fun connect() {
         _state.value = ConnectionState.Connecting
-        val incoming = UsbSerialInputStream()
+        val incoming = PolledByteQueueInputStream()
         val opened = CompletableDeferred<UsbSerialConnection>()
         val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
         scope.launch {
             events(opened).collect { event ->
                 when (event) {
-                    is UsbSerialEvent.Data -> incoming.append(event.bytes)
+                    is UsbSerialEvent.Data -> incoming.offer(event.bytes)
                     is UsbSerialEvent.Error -> incoming.fail(event.exception)
                 }
             }
@@ -185,7 +187,7 @@ class UsbSerialTransport(
                     val c = connection ?: throw IOException("Not connected to ECM.")
                     val inp = input ?: throw IOException("Not connected to ECM.")
                     PduFraming.writeFrame(UsbSerialOutputStream(c), request)
-                    PduFraming.readFrame(inp)
+                    PduFraming.readFrame(inp, buffer = frameBuffer)
                 }
             }
         } catch (e: CancellationException) {
@@ -238,54 +240,5 @@ private class UsbSerialOutputStream(private val connection: UsbSerialConnection)
     override fun write(b: ByteArray, off: Int, len: Int) {
         val slice = if (off == 0 && len == b.size) b else b.copyOfRange(off, off + len)
         connection.write(slice, UsbSerialTransport.WRITE_TIMEOUT_MS)
-    }
-}
-
-/**
- * A plain synchronized byte queue standing in for the deleted
- * `PipedInputStream`/`PipedOutputStream` bridge (R7, KD3): `onNewData`
- * appends from the manager's callback thread (via [UsbSerialTransport]'s
- * `callbackFlow`), [PduFraming.readFrame] polls [available]/[read] from the
- * coroutine driving `transact()`, exactly as it already polls a real
- * socket [InputStream]. [fail] lets `onRunError` make a currently-polling
- * read observe the failure immediately instead of waiting out the full
- * [PduFraming.RESPONSE_TIMEOUT_MS] budget: once set, [available] rethrows
- * the stored [IOException] as soon as the buffer is drained, rather than
- * reporting an empty buffer and letting the poll loop sleep through it.
- */
-private class UsbSerialInputStream : InputStream() {
-    private val lock = Any()
-    private var buffer = ByteArray(0)
-    private var error: IOException? = null
-
-    fun append(data: ByteArray) {
-        if (data.isEmpty()) return
-        synchronized(lock) { buffer += data }
-    }
-
-    fun fail(e: IOException) {
-        synchronized(lock) { error = e }
-    }
-
-    override fun available(): Int = synchronized(lock) {
-        if (buffer.isEmpty()) {
-            error?.let { throw it }
-        }
-        buffer.size
-    }
-
-    override fun read(): Int = synchronized(lock) {
-        if (buffer.isEmpty()) return -1
-        val b = buffer[0].toInt() and 0xff
-        buffer = buffer.copyOfRange(1, buffer.size)
-        b
-    }
-
-    override fun read(b: ByteArray, off: Int, len: Int): Int = synchronized(lock) {
-        if (buffer.isEmpty()) return 0
-        val n = minOf(len, buffer.size)
-        System.arraycopy(buffer, 0, b, off, n)
-        buffer = buffer.copyOfRange(n, buffer.size)
-        n
     }
 }

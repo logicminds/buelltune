@@ -38,14 +38,13 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.IOException
-import java.io.InputStream
 import java.io.OutputStream
 
 /**
  * BLE [EcmTransport] wrapping the vendored `SerialSocket`/`SerialListener`
  * pair (R7, R8, KD3, KTD11), replacing the legacy `ECM.connect(Context,
  * BluetoothDevice, Protocol)` overload's `PipedInputStream`/`PipedOutputStream`
- * bridge - deliberately **not** carried forward (see [SerialReadBuffer]).
+ * bridge - deliberately **not** carried forward (see [PolledByteQueueInputStream]).
  *
  * `SerialSocket` isn't directly constructible/fakeable the way
  * `BluetoothSocket` was mocked via Mockito for [BluetoothClassicTransport]
@@ -77,13 +76,16 @@ class BleTransport(
     override val state: StateFlow<ConnectionState> = _state.asStateFlow()
 
     @Volatile private var socket: BleSerialSocket? = null
-    @Volatile private var readBuffer: SerialReadBuffer? = null
+    @Volatile private var readBuffer: PolledByteQueueInputStream? = null
     @Volatile private var eventJob: Job? = null
+
+    /** Reused across every [transact] call (KTD11: safe because `mutex` serializes them). */
+    private val frameBuffer = ByteArray(256)
 
     override suspend fun connect() {
         _state.value = ConnectionState.Connecting
         val s = socketFactory()
-        val buffer = SerialReadBuffer()
+        val buffer = PolledByteQueueInputStream()
         val connectResult = CompletableDeferred<Unit>()
 
         val job = eventScope.launch {
@@ -135,7 +137,7 @@ class BleTransport(
                     val s = socket ?: throw IOException("Not connected to ECM.")
                     val input = readBuffer ?: throw IOException("Not connected to ECM.")
                     PduFraming.writeFrame(BleOutputStream(s), request)
-                    PduFraming.readFrame(input)
+                    PduFraming.readFrame(input, buffer = frameBuffer)
                 }
             }
         } catch (e: CancellationException) {
@@ -241,66 +243,4 @@ private class BleOutputStream(private val socket: BleSerialSocket) : OutputStrea
     override fun write(b: Int) = socket.write(byteArrayOf(b.toByte()))
     override fun write(b: ByteArray) = socket.write(b)
     override fun write(b: ByteArray, off: Int, len: Int) = socket.write(b.copyOfRange(off, off + len))
-}
-
-/**
- * Bridges [SerialListener.onSerialRead]'s pushed byte chunks onto the
- * synchronous, poll-based [InputStream] shape [PduFraming.readFrame] drives
- * - **without** a [java.io.PipedInputStream]. This is the deletion the unit
- * is named for: a piped stream's `read()` blocks until bytes arrive or the
- * writer end is explicitly closed, which is exactly what stalled forever on
- * a dropped BLE link until `f3337a1` added a manual `out.close()` to unstick
- * it. [read]/[available] here never block - they only ever look at bytes
- * already queued - so [PduFraming.readFully]'s own `available()`-then-sleep
- * polling loop is what bounds a stalled read, by its normal response-time
- * budget, with no explicit unstick required.
- *
- * [fail] additionally lets a reported [SerialListener.onSerialIoError]
- * short-circuit that budget: once the queue drains, the next [available]
- * call throws the recorded [IOException] immediately instead of idling out
- * the full timeout, which is what "state flips to Failed(Io) and the
- * in-flight transact() fails rather than hanging" (R8) tests for.
- */
-private class SerialReadBuffer : InputStream() {
-    private val lock = Any()
-    private val pending = ArrayDeque<Byte>()
-
-    @Volatile
-    private var error: IOException? = null
-
-    fun offer(data: ByteArray) {
-        synchronized(lock) {
-            for (b in data) pending.addLast(b)
-        }
-    }
-
-    fun fail(e: Exception) {
-        error = e as? IOException ?: IOException(e.message, e)
-    }
-
-    override fun available(): Int = synchronized(lock) {
-        if (pending.isEmpty()) error?.let { throw it }
-        pending.size
-    }
-
-    override fun read(): Int = synchronized(lock) {
-        if (pending.isEmpty()) {
-            error?.let { throw it }
-            return -1
-        }
-        pending.removeFirst().toInt() and 0xff
-    }
-
-    override fun read(b: ByteArray, off: Int, len: Int): Int = synchronized(lock) {
-        if (pending.isEmpty()) {
-            error?.let { throw it }
-            return -1
-        }
-        var n = 0
-        while (n < len && pending.isNotEmpty()) {
-            b[off + n] = pending.removeFirst()
-            n++
-        }
-        n
-    }
 }

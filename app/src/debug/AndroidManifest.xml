@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Debug-build-only manifest overlay (R12, KD2): declares the Compose shell's
-  launcher entry point. This activity exists only in debug builds - AGP
-  merges this file into the debug variant's manifest and it never reaches
-  `app/src/main/AndroidManifest.xml` or a release build - so it adds no
-  reachable component, launcher icon, or exported surface to a release APK
-  (R12: "reachable only from a debug-only entry point"). `MainActivity` and
-  every other entry in the main manifest are untouched.
+  Debug-build-only manifest overlay (R12, KD2, AE4 follow-up): declares the
+  Compose shell's launcher entry point. The activity itself lives under
+  `app/src/debug/java` (not `src/main/java`), so AGP only ever compiles it
+  and the rest of `biz.logicminds.buelltune.ui` for the debug variant - a
+  release build has no reachable component, launcher icon, or exported
+  surface at all (R12: "reachable only from a debug-only entry point").
+  The Compose runtime library itself still ships in a release build
+  regardless (see `app/build.gradle.kts`'s `sourceSets.debug` comment for
+  why). `MainActivity` and every other entry in the main manifest are
+  untouched.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 

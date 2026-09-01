@@ -22,14 +22,19 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 
 /**
- * Debug-only launcher entry point for [BuellTuneNavHost] (R12). Declared
- * only in `app/src/debug/AndroidManifest.xml`, so this activity has no
- * manifest entry - and is unreachable, no launcher icon, no exported
- * component - in a release build. It is a separate activity rather than a
- * menu entry inside `MainActivity` precisely because KTD4 forbids editing
- * `MainActivity`'s screen logic, and R12 forbids replacing an existing
- * screen; this class and its manifest overlay are the entirety of that
- * edit.
+ * Debug-only launcher entry point for [BuellTuneNavHost] (R12, AE4
+ * follow-up). Lives under `app/src/debug/java`, declared only in
+ * `app/src/debug/AndroidManifest.xml` - so this class and the rest of
+ * `biz.logicminds.buelltune.ui` (the ones this PR's own code adds) never
+ * compile into a release build, not just lack a reachable manifest entry.
+ * The Compose *runtime* itself stays a module-wide `implementation`
+ * dependency regardless (`app/build.gradle.kts`'s `sourceSets.debug`
+ * comment explains why: the Compose Compiler Gradle plugin requires it on
+ * every variant's compile classpath, release included). It is a separate
+ * activity rather than a menu entry inside `MainActivity` precisely
+ * because KTD4 forbids editing `MainActivity`'s screen logic, and R12
+ * forbids replacing an existing screen; this class and its manifest
+ * overlay are the entirety of that edit.
  */
 class BuellTuneDebugActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

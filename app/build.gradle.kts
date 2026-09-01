@@ -62,6 +62,15 @@ android {
         getByName("main") {
             kotlin.srcDir("src/main/java")
         }
+        getByName("debug") {
+            // R12/AE4 follow-up: the debug-only Compose shell
+            // (biz.logicminds.buelltune.ui) lives here, not under
+            // src/main/java, so it and the Compose runtime it depends on
+            // (see the debugImplementation(libs.compose.*) block below)
+            // never compile into a release build - see
+            // BuellTuneDebugActivity's class doc.
+            kotlin.srcDir("src/debug/java")
+        }
         getByName("test") {
             kotlin.srcDir("src/test/java")
             java.srcDir("src/sharedTest/java")
@@ -87,6 +96,14 @@ dependencies {
     ksp(libs.room.compiler)
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
+    // Compose runtime stays module-wide `implementation` rather than
+    // `debugImplementation`, even though only the debug-only shell under
+    // src/debug/java uses it (see BuellTuneDebugActivity's class doc):
+    // the Compose Compiler Gradle plugin (`libs.plugins.composeCompiler`)
+    // requires the runtime on every variant's compile classpath -
+    // including release's, even with zero `@Composable` sources in that
+    // variant - and fails `compileReleaseKotlin` with
+    // `IncompatibleComposeRuntimeVersionException` otherwise (verified).
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)

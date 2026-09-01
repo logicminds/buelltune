@@ -63,10 +63,20 @@ object PduFraming {
      * same stream resynchronizes to the next valid frame instead of
      * parsing stale/misaligned bytes (the post-failure resync logic
      * `ECM.receivePDU`'s `catch` block performed).
+     *
+     * [buffer] is scratch space, reused byte-for-byte from the previous
+     * call - never read before being overwritten - so a caller whose own
+     * `Mutex` already serializes every `readFrame` on a given connection
+     * (every [EcmTransport] implementation does, inside `transact()`'s
+     * `mutex.withLock { }`) can pass in one instance-owned array instead of
+     * paying a fresh 256-byte allocation on every polled frame. Defaults to
+     * a fresh allocation so callers with no such guarantee - e.g. a test
+     * calling [readFrame] directly - are unaffected. Must be at least
+     * [HEADER_LENGTH] + 256 bytes; a caller-supplied buffer is never
+     * resized.
      */
     @Throws(IOException::class)
-    fun readFrame(input: InputStream, timeoutMs: Int = RESPONSE_TIMEOUT_MS): PDU {
-        val buffer = ByteArray(256)
+    fun readFrame(input: InputStream, timeoutMs: Int = RESPONSE_TIMEOUT_MS, buffer: ByteArray = ByteArray(256)): PDU {
         try {
             readFully(input, buffer, 0, HEADER_LENGTH, timeoutMs)
             if (buffer[0] != PDU.SOH && buffer[4] != PDU.EOH && buffer[5] != PDU.SOT) {

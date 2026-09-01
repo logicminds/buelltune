@@ -58,6 +58,9 @@ class TcpTransport(
     @Volatile private var input: InputStream? = null
     @Volatile private var output: OutputStream? = null
 
+    /** Reused across every [transact] call (KTD11: safe because `mutex` serializes them). */
+    private val frameBuffer = ByteArray(256)
+
     override suspend fun connect() {
         _state.value = ConnectionState.Connecting
         var opened: Socket? = null
@@ -86,7 +89,7 @@ class TcpTransport(
                     val out = output ?: throw IOException("Not connected to ECM.")
                     val inp = input ?: throw IOException("Not connected to ECM.")
                     PduFraming.writeFrame(out, request)
-                    PduFraming.readFrame(inp)
+                    PduFraming.readFrame(inp, buffer = frameBuffer)
                 }
             }
         } catch (e: CancellationException) {

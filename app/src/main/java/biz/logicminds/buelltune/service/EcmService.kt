@@ -88,6 +88,23 @@ class EcmService : Service() {
     private lateinit var bridge: LegacyBroadcastBridge
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /**
+     * Serializes every foreground-state decide-then-act sequence
+     * ([startRecording]/[stopRecordingInternal]/[startReading]/[stopReading],
+     * called synchronously from Binder callers on the caller's thread, and
+     * [observeConnectionLoss]'s collector on [serviceScope]'s
+     * `Dispatchers.IO`). Without it, two callers reading [PollRecordLoop]'s
+     * flags and calling `startForeground`/`stopForeground` from different
+     * threads can interleave arbitrarily - e.g. a rider tapping "start
+     * reading" at the exact moment the link drops - leaving the actual
+     * notification state silently out of sync with [loop]'s real state. A
+     * plain monitor is sufficient (not a coroutine `Mutex`): every guarded
+     * block is a fast, non-suspending Binder/notification call, so holding
+     * it briefly from [observeConnectionLoss]'s `onEach` risks no
+     * suspension-while-locked deadlock.
+     */
+    private val foregroundLock = Any()
+
     override fun onCreate() {
         super.onCreate()
         ecm = ECM.getInstance(this)
@@ -134,7 +151,9 @@ class EcmService : Service() {
     @Throws(IOException::class)
     fun startRecording(logStream: FileOutputStream, interval: Int, ecm: ECM) {
         loop.startRecording(DataOutputStreamRecordingSink(DataOutputStream(logStream)), interval)
-        enterForeground(getString(R.string.app_name), getString(R.string.recording_started))
+        synchronized(foregroundLock) {
+            enterForeground(getString(R.string.app_name), getString(R.string.recording_started))
+        }
     }
 
     fun stopRecording() {
@@ -143,10 +162,12 @@ class EcmService : Service() {
 
     private fun stopRecordingInternal() {
         loop.stopRecording()
-        if (loop.isReading()) {
-            enterForeground(getString(R.string.app_name), getString(R.string.reading_started))
-        } else {
-            exitForeground()
+        synchronized(foregroundLock) {
+            if (loop.isReading()) {
+                enterForeground(getString(R.string.app_name), getString(R.string.reading_started))
+            } else {
+                exitForeground()
+            }
         }
     }
 
@@ -156,15 +177,19 @@ class EcmService : Service() {
 
     fun startReading() {
         loop.startReading()
-        enterForeground(getString(R.string.app_name), getString(R.string.reading_started))
+        synchronized(foregroundLock) {
+            enterForeground(getString(R.string.app_name), getString(R.string.reading_started))
+        }
     }
 
     fun stopReading() {
         loop.stopReading()
-        if (loop.isRecording()) {
-            enterForeground(getString(R.string.app_name), getString(R.string.recording_started))
-        } else {
-            exitForeground()
+        synchronized(foregroundLock) {
+            if (loop.isRecording()) {
+                enterForeground(getString(R.string.app_name), getString(R.string.recording_started))
+            } else {
+                exitForeground()
+            }
         }
     }
 
@@ -187,7 +212,7 @@ class EcmService : Service() {
     private fun observeConnectionLoss() {
         loop.state
             .filterIsInstance<ConnectionState.Failed>()
-            .onEach { exitForeground() }
+            .onEach { synchronized(foregroundLock) { exitForeground() } }
             .launchIn(serviceScope)
     }
 
