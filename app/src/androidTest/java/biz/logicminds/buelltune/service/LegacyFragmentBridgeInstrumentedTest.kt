@@ -97,6 +97,20 @@ class LegacyFragmentBridgeInstrumentedTest {
         ActivityScenario.launch<MainActivity>(intent).use {
             onView(withId(R.id.toggleLiveChannels)).check(matches(isEnabled()))
             onView(withId(R.id.toggleLiveChannels)).perform(click())
+            // CompoundButton.performClick() toggles isChecked() synchronously,
+            // but DataChannelFragment.onResume() unconditionally re-derives it
+            // from ecmDroidService.isReading() - if a lifecycle blip (e.g. a
+            // transient focus loss) replays onResume() before startReading()'s
+            // state change has propagated, the checked flag can momentarily
+            // read back false (observed once on a real CI run).
+            waitFor(timeoutMs = 10_000) {
+                try {
+                    onView(withId(R.id.toggleLiveChannels)).check(matches(isChecked()))
+                    true
+                } catch (e: AssertionError) {
+                    false
+                }
+            }
             onView(withId(R.id.toggleLiveChannels)).check(matches(isChecked()))
 
             fakeServer.close()

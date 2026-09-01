@@ -32,8 +32,8 @@ import biz.logicminds.buelltune.PDU
 import biz.logicminds.buelltune.transport.PduFraming
 import biz.logicminds.buelltune.transport.TransportFactory
 import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -134,7 +134,7 @@ class EcmServiceBroadcastInstrumentedTest {
 
             // -- REALTIME_DATA + foreground on startReading() --
             service.startReading()
-            assertEquals(EcmService.REALTIME_DATA, received.poll(10, TimeUnit.SECONDS))
+            awaitAction(received, EcmService.REALTIME_DATA)
             assertTrueEventually("no active foreground notification after startReading()") {
                 activeNotificationCount() > 0
             }
@@ -143,10 +143,10 @@ class EcmServiceBroadcastInstrumentedTest {
             val logFile = File.createTempFile("instrumented-test-log", ".bin")
             try {
                 service.startRecording(FileOutputStream(logFile), 0, ecm)
-                assertEquals(EcmService.RECORDING_STARTED, received.poll(10, TimeUnit.SECONDS))
+                awaitAction(received, EcmService.RECORDING_STARTED)
 
                 service.stopRecording()
-                assertEquals(EcmService.RECORDING_STOPPED, received.poll(10, TimeUnit.SECONDS))
+                awaitAction(received, EcmService.RECORDING_STOPPED)
             } finally {
                 logFile.delete()
             }
@@ -160,9 +160,9 @@ class EcmServiceBroadcastInstrumentedTest {
 
             // -- CONNECTION_LOST on a real link drop (F1, AE1) --
             service.startReading()
-            assertEquals(EcmService.REALTIME_DATA, received.poll(10, TimeUnit.SECONDS))
+            awaitAction(received, EcmService.REALTIME_DATA)
             fakeServer.close()
-            assertEquals(EcmService.CONNECTION_LOST, received.poll(10, TimeUnit.SECONDS))
+            awaitAction(received, EcmService.CONNECTION_LOST)
             assertTrueEventually("foreground notification still active after a connection loss") {
                 activeNotificationCount() == 0
             }
@@ -174,6 +174,32 @@ class EcmServiceBroadcastInstrumentedTest {
     private fun activeNotificationCount(): Int {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         return nm.activeNotifications.size
+    }
+
+    /**
+     * `startReading()` keeps [EcmService.REALTIME_DATA] firing on every
+     * poll tick for as long as reading is active - it never stops just
+     * because the test moved on to asserting a different, one-shot "edge"
+     * action (RECORDING_STARTED/RECORDING_STOPPED/CONNECTION_LOST). A
+     * plain `received.poll()` assumes strict FIFO ordering across that
+     * inherently continuous stream and can dequeue a stale, already-seen
+     * REALTIME_DATA ahead of the edge action actually being waited for
+     * (confirmed via a real CI run: expected RECORDING_STOPPED, got
+     * REALTIME_DATA). Draining and discarding any other action while
+     * waiting for [expected] matches how a real receiver reacts to it.
+     */
+    private fun awaitAction(received: LinkedBlockingQueue<String>, expected: String, timeoutMs: Long = 10_000) {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (true) {
+            val remaining = deadline - System.currentTimeMillis()
+            if (remaining <= 0) {
+                fail("Timed out waiting for $expected broadcast")
+            }
+            val action = received.poll(remaining, TimeUnit.MILLISECONDS)
+            if (action == expected) {
+                return
+            }
+        }
     }
 
     private fun assertTrueEventually(message: String, timeoutMs: Long = 5000, condition: () -> Boolean) {
