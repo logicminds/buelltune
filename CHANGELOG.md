@@ -12,6 +12,15 @@ in the release pull request before merging.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-02
+
+- fix(build): remove deprecated AGP 9.2 gradle.properties flags ([`7148104`](https://github.com/logicminds/buelltune/commit/7148104))
+- feat(brand): rename display name to BuellTune, credit fork lineage in About ([`cf45dac`](https://github.com/logicminds/buelltune/commit/cf45dac))
+- bd: update sync.remote ([`80a999e`](https://github.com/logicminds/buelltune/commit/80a999e))
+- Add doc ([`195f441`](https://github.com/logicminds/buelltune/commit/195f441))
+- feat(brand): visual rebrand -- original adaptive icon, brand palette, docs ([`a376dc4`](https://github.com/logicminds/buelltune/commit/a376dc4))
+- refactor(brand): reference colorPrimary/colorPrimaryDark instead of duplicating hex ([`81c6e92`](https://github.com/logicminds/buelltune/commit/81c6e92))
+- feat(brand): digital-wing rebrand -- new icon/palette, launch splash screen ([`b427a65`](https://github.com/logicminds/buelltune/commit/b427a65))
 ## [0.1.0] - 2026-09-01
 
 - Fix CI: lint baseline, androidTest dexing bug, and 6 real test bugs ([`f2ab7de`](https://github.com/logicminds/buelltune/commit/f2ab7de))
