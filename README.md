@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/branding/buelltune-banner.png" alt="BuellTune" width="100%">
+</p>
+
 BuellTune
 ---------
 
