@@ -88,16 +88,14 @@ class MainActivityBluetoothPermissionInstrumentedTest {
 
     @After
     fun tearDown() {
-        // This test never taps through the real GrantPermissionsActivity - it
-        // resolves the permission via `pm grant` and calls
-        // onRequestPermissionsResult directly instead (see the class doc).
-        // That real system permission activity/dialog, if requestPermissions()
-        // actually launched one, is therefore never dismissed by a real user
-        // interaction and can linger on screen, stealing window focus from
-        // every Espresso assertion in every test that runs after this one in
-        // the same suite (see the RootViewWithoutFocusException failures
-        // that motivated this). A BACK press closes it before ActivityScenario
-        // tears down MainActivity itself.
+        // Defensive cleanup only: dismissSystemPermissionPrompt() below already
+        // closes the real system permission prompt before this test's own
+        // assertions run. This is a fallback for the case where the test fails
+        // before reaching that point (e.g. the precondition assertNotEquals
+        // above) and a prompt from a previous run of this test is still up -
+        // left on screen it steals window focus from every Espresso assertion
+        // in every test that runs after this one in the same suite (see the
+        // RootViewWithoutFocusException failures that motivated this).
         runShellCommand("input keyevent ${android.view.KeyEvent.KEYCODE_BACK}")
         // Leave the real OS permission state as this suite found it so unrelated
         // tests elsewhere in the run are never left with BLUETOOTH_CONNECT revoked.
@@ -123,6 +121,16 @@ class MainActivityBluetoothPermissionInstrumentedTest {
             // the one thing this step actually claims: no crash, not destroyed.
             scenario.onActivity { activity -> invokeShowDevices(activity) }
             assertTrue(scenario.state.isAtLeast(Lifecycle.State.STARTED))
+
+            // The real system permission prompt ActivityCompat.requestPermissions() just
+            // launched (GrantPermissionsActivity on API 31+) must be dismissed now, not
+            // deferred to tearDown(): left on screen it steals window focus from the
+            // onView() assertion a few lines below, and from every Espresso assertion in
+            // every test that runs after this one in the same connected-test run. A single
+            // fire-and-forget BACK press races the window manager, which needs a moment to
+            // actually hand focus back to MainActivity, so retry it until that handoff is
+            // observed instead of assuming it happened.
+            dismissSystemPermissionPrompt(scenario)
 
             // -- The permission is actually (re-)granted at the OS level... --
             runShellCommand("pm grant ${context.packageName} ${Manifest.permission.BLUETOOTH_CONNECT}")
@@ -151,6 +159,14 @@ class MainActivityBluetoothPermissionInstrumentedTest {
         val method = MainActivity::class.java.getDeclaredMethod("showDevices")
         method.isAccessible = true
         method.invoke(activity)
+    }
+
+    private fun dismissSystemPermissionPrompt(scenario: ActivityScenario<MainActivity>) {
+        val deadline = System.currentTimeMillis() + 10_000
+        while (System.currentTimeMillis() < deadline && scenario.state != Lifecycle.State.RESUMED) {
+            runShellCommand("input keyevent ${android.view.KeyEvent.KEYCODE_BACK}")
+            Thread.sleep(200)
+        }
     }
 
     private fun runShellCommand(command: String) {
