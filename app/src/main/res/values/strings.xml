@@ -275,7 +275,6 @@
 	<string name="llm_ollama_category">Ollama</string>
 	<string name="llm_ollama_base_url_title">Server Base URL</string>
 	<string name="llm_bedrock_category">AWS Bedrock</string>
-	<string name="llm_bedrock_access_key_title">Access Key</string>
-	<string name="llm_bedrock_secret_key_title">Secret Key</string>
+	<string name="llm_bedrock_api_key_title">API Key</string>
 	<string name="llm_bedrock_region_title">Region</string>
 </resources>

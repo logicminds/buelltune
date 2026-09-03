@@ -59,14 +59,9 @@
 		android:key="llm_bedrock_category"
 		android:title="@string/llm_bedrock_category">
 		<EditTextPreference
-			android:key="llm_bedrock_access_key"
+			android:key="llm_bedrock_api_key"
 			android:inputType="textPassword"
-			android:title="@string/llm_bedrock_access_key_title"
-			app:useSimpleSummaryProvider="false" />
-		<EditTextPreference
-			android:key="llm_bedrock_secret_key"
-			android:inputType="textPassword"
-			android:title="@string/llm_bedrock_secret_key_title"
+			android:title="@string/llm_bedrock_api_key_title"
 			app:useSimpleSummaryProvider="false" />
 		<EditTextPreference
 			android:key="llm_bedrock_region"
