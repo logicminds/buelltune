@@ -55,6 +55,7 @@ koog-agents = { group = "ai.koog", name = "koog-agents", version.ref = "koog" }
 koog-openrouter-client = { group = "ai.koog", name = "prompt-executor-openrouter-client", version.ref = "koog" }
 koog-deepseek-client = { group = "ai.koog", name = "prompt-executor-deepseek-client", version.ref = "koogBeta" }
 koog-google-client = { group = "ai.koog", name = "prompt-executor-google-client", version.ref = "koogBeta" }
+koog-http-client-ktor = { group = "ai.koog", name = "http-client-ktor", version.ref = "koog" }
 preference-ktx = { group = "androidx.preference", name = "preference-ktx", version.ref = "preference" }
 recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }

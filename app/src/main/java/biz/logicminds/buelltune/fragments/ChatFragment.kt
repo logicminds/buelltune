@@ -155,6 +155,13 @@ class ChatFragment : Fragment() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        val activity = requireActivity() as MainActivity
+        activity.setTitle(getString(R.string.chat_title))
+        activity.updateConnectButton()
+    }
+
     private fun bindViews(view: View) {
         setupContainer = view.findViewById(R.id.setupContainer)
         listContainer = view.findViewById(R.id.listContainer)
@@ -283,8 +290,31 @@ class ChatFragment : Fragment() {
      */
     private fun populatePromptChips() {
         promptChips.removeAllViews()
+        // The app's base theme (AppTheme -> Theme.AppCompat.Light.DarkActionBar,
+        // res/values/styles.xml) is not a Theme.MaterialComponents descendant.
+        // Chip's constructor hard-fails with IllegalArgumentException against a
+        // plain AppCompat theme (ThemeEnforcement.checkMaterialTheme) - verified
+        // by an actual crash during manual smoke testing against ecmsimRun, not
+        // a defensive guess. A ThemeOverlay.MaterialComponents.* wrapper does
+        // NOT fix this: only a full Theme.MaterialComponents.* theme sets the
+        // isMaterialTheme=true flag ThemeEnforcement checks for (confirmed by
+        // inspecting the material library's own theme definitions - overlays
+        // don't set it, "Bridge" themes do) - this crashed identically even
+        // after wrapping with ThemeOverlay.MaterialComponents.Light, caught by
+        // a second smoke-test pass, not assumed fixed after the first attempt.
+        // Theme.MaterialComponents.Light.DarkActionBar.Bridge is the material
+        // library's own purpose-built theme for exactly this case: it extends
+        // Theme.AppCompat.Light.DarkActionBar (the app's real base theme) while
+        // still setting isMaterialTheme=true, so wrapping just this context
+        // satisfies Chip's requirement without changing the app-wide AppCompat
+        // theme every other screen relies on (§14/AGENTS.md - avoid unrelated
+        // changes to existing screens).
+        val chipContext = android.view.ContextThemeWrapper(
+            requireContext(),
+            com.google.android.material.R.style.Theme_MaterialComponents_Light_DarkActionBar_Bridge,
+        )
         for (definition in promptChipDefinitions) {
-            val chip = Chip(requireContext())
+            val chip = Chip(chipContext)
             chip.text = getString(definition.chatChipLabel)
             chip.isClickable = true
             chip.isCheckable = false

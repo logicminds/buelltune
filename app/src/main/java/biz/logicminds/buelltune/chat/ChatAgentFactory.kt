@@ -17,6 +17,8 @@
  */
 package biz.logicminds.buelltune.chat
 
+import ai.koog.http.client.KoogHttpClient
+import ai.koog.http.client.ktor.KtorKoogHttpClient
 import ai.koog.prompt.executor.clients.anthropic.AnthropicLLMClient
 import ai.koog.prompt.executor.clients.anthropic.AnthropicModels
 import ai.koog.prompt.executor.clients.deepseek.DeepSeekLLMClient
@@ -32,6 +34,30 @@ import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.executor.ollama.client.OllamaClient
 import ai.koog.prompt.executor.ollama.client.OllamaModels
 import ai.koog.prompt.llm.LLModel
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+
+/**
+ * Explicit [KoogHttpClient.Factory], bypassing Koog 1.2.0's own
+ * ServiceLoader-based auto-discovery (`java.util.ServiceLoader.load`),
+ * which is broken for the Android target: the `http-client-ktor-android`
+ * artifact ships zero `META-INF/services` registration (confirmed by
+ * inspecting the resolved AAR directly), so the default lookup always
+ * throws `IllegalStateException("No KoogHttpClient.Factory provider
+ * found...")` the first time any provider client is actually used - found
+ * via manual smoke testing against `ecmsimRun` on a real device/emulator,
+ * not caught by any unit/instrumented test (U6's agentic-loop tests use a
+ * fake `PromptExecutor` that never exercises a real client's HTTP
+ * construction path). Every provider client accepts a
+ * [KoogHttpClient.Factory] as an explicit constructor parameter
+ * specifically for this fallback (confirmed by inspecting each client's
+ * compiled constructors); [KtorKoogHttpClient.Factory] is Koog's own ready
+ * implementation of it (headers/query params/timeouts/JSON content
+ * negotiation all wired already) - it just needs a concrete Ktor engine,
+ * which the app already depends on transitively (`ktor-client-okhttp`).
+ */
+private val koogHttpClientFactory: KoogHttpClient.Factory =
+    KtorKoogHttpClient.Factory(HttpClient(OkHttp))
 
 /**
  * Credentials for the provider a conversation is bound to (KD5): [apiKey]
@@ -74,29 +100,41 @@ class ChatAgentFactory {
     ): Pair<PromptExecutor, LLModel> = when (providerId) {
         ProviderId.ANTHROPIC -> {
             val apiKey = requireApiKey(providerId, credentials)
-            MultiLLMPromptExecutor(AnthropicLLMClient(apiKey)) to AnthropicModels.Opus_4_1
+            MultiLLMPromptExecutor(
+                AnthropicLLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory),
+            ) to AnthropicModels.Opus_4_1
         }
         ProviderId.OPENAI -> {
             val apiKey = requireApiKey(providerId, credentials)
-            MultiLLMPromptExecutor(OpenAILLMClient(apiKey)) to OpenAIModels.Chat.GPT4o
+            MultiLLMPromptExecutor(
+                OpenAILLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory),
+            ) to OpenAIModels.Chat.GPT4o
         }
         ProviderId.GOOGLE -> {
             val apiKey = requireApiKey(providerId, credentials)
-            MultiLLMPromptExecutor(GoogleLLMClient(apiKey)) to GoogleModels.Gemini2_5Pro
+            MultiLLMPromptExecutor(
+                GoogleLLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory),
+            ) to GoogleModels.Gemini2_5Pro
         }
         ProviderId.DEEPSEEK -> {
             val apiKey = requireApiKey(providerId, credentials)
-            MultiLLMPromptExecutor(DeepSeekLLMClient(apiKey)) to DeepSeekModels.DeepSeekV4Flash
+            MultiLLMPromptExecutor(
+                DeepSeekLLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory),
+            ) to DeepSeekModels.DeepSeekV4Flash
         }
         ProviderId.OPENROUTER -> {
             // Also the Kimi/Moonshot path (KD4) - no special-casing needed.
             val apiKey = requireApiKey(providerId, credentials)
-            MultiLLMPromptExecutor(OpenRouterLLMClient(apiKey)) to OpenRouterModels.GPT4o
+            MultiLLMPromptExecutor(
+                OpenRouterLLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory),
+            ) to OpenRouterModels.GPT4o
         }
         ProviderId.OLLAMA -> {
             val baseUrl = credentials.baseUrl?.takeIf { it.isNotBlank() }
                 ?: throw IllegalArgumentException("Ollama requires a base URL.")
-            MultiLLMPromptExecutor(OllamaClient(baseUrl)) to OllamaModels.Meta.LLAMA_3_2
+            MultiLLMPromptExecutor(
+                OllamaClient(httpClientFactory = koogHttpClientFactory, baseUrl = baseUrl),
+            ) to OllamaModels.Meta.LLAMA_3_2
         }
     }
 

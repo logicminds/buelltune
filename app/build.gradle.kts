@@ -109,6 +109,15 @@ dependencies {
     implementation(libs.koog.openrouter.client)
     implementation(libs.koog.deepseek.client)
     implementation(libs.koog.google.client)
+    // Koog resolves its HTTP client engine via a runtime ServiceLoader-style
+    // lookup, not a compile-time default -- without this, every provider
+    // client throws IllegalStateException("No KoogHttpClient.Factory
+    // provider found on the runtime classpath...") the first time it's
+    // actually used. Found via manual smoke testing against ecmsimRun (a
+    // real device/emulator run), not caught by any unit/instrumented test
+    // since U6's agentic-loop tests use a fake PromptExecutor that never
+    // exercises a real provider client's HTTP construction path.
+    implementation(libs.koog.http.client.ktor)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.preference.ktx)
     implementation(libs.recyclerview)
