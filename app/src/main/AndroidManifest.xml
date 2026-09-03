@@ -50,6 +50,10 @@
             android:label="@string/preferences"
             android:exported="false"/>
         <activity
+            android:name=".activities.LlmSettingsActivity"
+            android:label="@string/llm_settings_title"
+            android:exported="false"/>
+        <activity
             android:name=".fragments.TorqueValuesFragment"
             android:label="Torque Values" >
         </activity>

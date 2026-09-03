@@ -21,6 +21,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
 import android.preference.PreferenceManager
+import biz.logicminds.buelltune.chat.ProviderId
 
 /**
  * Typed accessor for every SharedPreferences key the app reads or writes.
@@ -139,5 +140,71 @@ object AppPreferences {
             .putInt("delay", intervalIndex)
             .putBoolean("convertlog", convertOnSave)
             .apply()
+    }
+
+    // --- LLM provider credentials (PreferenceManager.getDefaultSharedPreferences) ---
+    //
+    // Set via `LlmSettingsActivity`'s `PreferenceFragmentCompat`
+    // (`res/xml/llm_prefs.xml`), which persists to this same store (KTD6).
+
+    /** Anthropic API key, set via the `llm_anthropic_key` `EditTextPreference`; `null` until configured. */
+    @JvmStatic
+    fun anthropicApiKey(context: Context): String? = defaultPrefs(context).getString("llm_anthropic_key", null)
+
+    /** OpenAI API key, set via the `llm_openai_key` `EditTextPreference`; `null` until configured. */
+    @JvmStatic
+    fun openAiApiKey(context: Context): String? = defaultPrefs(context).getString("llm_openai_key", null)
+
+    /** Google (Gemini) API key, set via the `llm_google_key` `EditTextPreference`; `null` until configured. */
+    @JvmStatic
+    fun googleApiKey(context: Context): String? = defaultPrefs(context).getString("llm_google_key", null)
+
+    /** DeepSeek API key, set via the `llm_deepseek_key` `EditTextPreference`; `null` until configured. */
+    @JvmStatic
+    fun deepSeekApiKey(context: Context): String? = defaultPrefs(context).getString("llm_deepseek_key", null)
+
+    /** OpenRouter API key, set via the `llm_openrouter_key` `EditTextPreference`; `null` until configured. Also the Kimi/Moonshot path (KD4). */
+    @JvmStatic
+    fun openRouterApiKey(context: Context): String? = defaultPrefs(context).getString("llm_openrouter_key", null)
+
+    /** Rider-reachable Ollama server base URL, set via the `llm_ollama_base_url` `EditTextPreference`; `null` until configured. No on-device inference runs (R11). */
+    @JvmStatic
+    fun ollamaBaseUrl(context: Context): String? = defaultPrefs(context).getString("llm_ollama_base_url", null)
+
+    /** AWS Bedrock access key, set via the `llm_bedrock_access_key` `EditTextPreference`; `null` until configured. */
+    @JvmStatic
+    fun bedrockAccessKey(context: Context): String? = defaultPrefs(context).getString("llm_bedrock_access_key", null)
+
+    /** AWS Bedrock secret key, set via the `llm_bedrock_secret_key` `EditTextPreference`; `null` until configured. */
+    @JvmStatic
+    fun bedrockSecretKey(context: Context): String? = defaultPrefs(context).getString("llm_bedrock_secret_key", null)
+
+    /** AWS Bedrock region, set via the `llm_bedrock_region` `EditTextPreference`; `null` until configured. */
+    @JvmStatic
+    fun bedrockRegion(context: Context): String? = defaultPrefs(context).getString("llm_bedrock_region", null)
+
+    /**
+     * Providers with a non-blank credential set, in [ProviderId] declaration order. Ollama counts
+     * as configured on a non-blank base URL alone (R11: no API key, just a reachable server);
+     * Bedrock requires all three of access key, secret key, and region to be non-blank; every
+     * other provider requires only its single API key to be non-blank. Backs the R14 setup-prompt
+     * gate and the new-conversation provider picker (U9).
+     */
+    @JvmStatic
+    fun configuredProviders(context: Context): List<ProviderId> {
+        val configured = mutableListOf<ProviderId>()
+        if (!anthropicApiKey(context).isNullOrBlank()) configured.add(ProviderId.ANTHROPIC)
+        if (!openAiApiKey(context).isNullOrBlank()) configured.add(ProviderId.OPENAI)
+        if (!googleApiKey(context).isNullOrBlank()) configured.add(ProviderId.GOOGLE)
+        if (!deepSeekApiKey(context).isNullOrBlank()) configured.add(ProviderId.DEEPSEEK)
+        if (!openRouterApiKey(context).isNullOrBlank()) configured.add(ProviderId.OPENROUTER)
+        if (!ollamaBaseUrl(context).isNullOrBlank()) configured.add(ProviderId.OLLAMA)
+        if (!bedrockAccessKey(context).isNullOrBlank() &&
+            !bedrockSecretKey(context).isNullOrBlank() &&
+            !bedrockRegion(context).isNullOrBlank()
+        ) {
+            configured.add(ProviderId.BEDROCK)
+        }
+        return configured
     }
 }

@@ -261,4 +261,21 @@
     <string name="choose_storage_location">Please configure log storage location first</string>
 	<string name="storage_location">Log Storage Location</string>
 	<string name="setup_storage_hint">...choose log data storage location...</string>
+	<string name="llm_settings_title">AI Chat Providers</string>
+	<string name="llm_anthropic_category">Anthropic</string>
+	<string name="llm_anthropic_key_title">API Key</string>
+	<string name="llm_openai_category">OpenAI</string>
+	<string name="llm_openai_key_title">API Key</string>
+	<string name="llm_google_category">Google</string>
+	<string name="llm_google_key_title">API Key</string>
+	<string name="llm_deepseek_category">DeepSeek</string>
+	<string name="llm_deepseek_key_title">API Key</string>
+	<string name="llm_openrouter_category">OpenRouter</string>
+	<string name="llm_openrouter_key_title">API Key</string>
+	<string name="llm_ollama_category">Ollama</string>
+	<string name="llm_ollama_base_url_title">Server Base URL</string>
+	<string name="llm_bedrock_category">AWS Bedrock</string>
+	<string name="llm_bedrock_access_key_title">Access Key</string>
+	<string name="llm_bedrock_secret_key_title">Secret Key</string>
+	<string name="llm_bedrock_region_title">Region</string>
 </resources>

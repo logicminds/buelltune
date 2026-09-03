@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+				  xmlns:app="http://schemas.android.com/apk/res-auto"
+				  android:title="@string/llm_settings_title">
+	<PreferenceCategory
+		android:key="llm_anthropic_category"
+		android:title="@string/llm_anthropic_category">
+		<EditTextPreference
+			android:key="llm_anthropic_key"
+			android:inputType="textPassword"
+			android:title="@string/llm_anthropic_key_title"
+			app:useSimpleSummaryProvider="false" />
+	</PreferenceCategory>
+	<PreferenceCategory
+		android:key="llm_openai_category"
+		android:title="@string/llm_openai_category">
+		<EditTextPreference
+			android:key="llm_openai_key"
+			android:inputType="textPassword"
+			android:title="@string/llm_openai_key_title"
+			app:useSimpleSummaryProvider="false" />
+	</PreferenceCategory>
+	<PreferenceCategory
+		android:key="llm_google_category"
+		android:title="@string/llm_google_category">
+		<EditTextPreference
+			android:key="llm_google_key"
+			android:inputType="textPassword"
+			android:title="@string/llm_google_key_title"
+			app:useSimpleSummaryProvider="false" />
+	</PreferenceCategory>
+	<PreferenceCategory
+		android:key="llm_deepseek_category"
+		android:title="@string/llm_deepseek_category">
+		<EditTextPreference
+			android:key="llm_deepseek_key"
+			android:inputType="textPassword"
+			android:title="@string/llm_deepseek_key_title"
+			app:useSimpleSummaryProvider="false" />
+	</PreferenceCategory>
+	<PreferenceCategory
+		android:key="llm_openrouter_category"
+		android:title="@string/llm_openrouter_category">
+		<EditTextPreference
+			android:key="llm_openrouter_key"
+			android:inputType="textPassword"
+			android:title="@string/llm_openrouter_key_title"
+			app:useSimpleSummaryProvider="false" />
+	</PreferenceCategory>
+	<PreferenceCategory
+		android:key="llm_ollama_category"
+		android:title="@string/llm_ollama_category">
+		<EditTextPreference
+			android:key="llm_ollama_base_url"
+			android:inputType="textUri"
+			android:title="@string/llm_ollama_base_url_title" />
+	</PreferenceCategory>
+	<PreferenceCategory
+		android:key="llm_bedrock_category"
+		android:title="@string/llm_bedrock_category">
+		<EditTextPreference
+			android:key="llm_bedrock_access_key"
+			android:inputType="textPassword"
+			android:title="@string/llm_bedrock_access_key_title"
+			app:useSimpleSummaryProvider="false" />
+		<EditTextPreference
+			android:key="llm_bedrock_secret_key"
+			android:inputType="textPassword"
+			android:title="@string/llm_bedrock_secret_key_title"
+			app:useSimpleSummaryProvider="false" />
+		<EditTextPreference
+			android:key="llm_bedrock_region"
+			android:inputType="text"
+			android:title="@string/llm_bedrock_region_title" />
+	</PreferenceCategory>
+</PreferenceScreen>
