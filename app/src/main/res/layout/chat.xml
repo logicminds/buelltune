@@ -62,6 +62,25 @@
 
 		</LinearLayout>
 
+		<!--
+			R20 (U10): the plan's prose describes the chips as sitting "above the
+			input", but tapping one must start a brand-new conversation (R20's
+			"each starting a new conversation"), and the input box only exists
+			once a conversation is already open (conversationContainer). Chips
+			are placed here instead, above the browsable conversation list -
+			the actual pre-conversation landing state - so a rider can tap one
+			without first creating or opening anything. Populated in
+			ChatFragment.populatePromptChips(); gone until then.
+		-->
+		<com.google.android.material.chip.ChipGroup
+			android:id="@+id/promptChips"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:paddingStart="8dp"
+			android:paddingTop="4dp"
+			android:paddingEnd="8dp"
+			android:visibility="gone"/>
+
 		<TextView
 			android:id="@+id/noConversationsMessage"
 			android:layout_width="match_parent"
@@ -83,7 +102,7 @@
 
 	</LinearLayout>
 
-	<!-- R19: message list, input, send button, tool-call indicator, prompt chips (U10). -->
+	<!-- R19: message list, input, send button, tool-call indicator. Prompt chips (R20/U10) live in listContainer above; see promptChips there. -->
 	<LinearLayout
 		android:id="@+id/conversationContainer"
 		android:layout_width="match_parent"
@@ -139,15 +158,6 @@
 			android:visibility="gone"
 			tools:text="Reading ECM: read_live_data"
 			tools:visibility="visible"/>
-
-		<!-- U10 populates these chips; left empty/gone here as the container insertion point. -->
-		<com.google.android.material.chip.ChipGroup
-			android:id="@+id/promptChips"
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:paddingStart="8dp"
-			android:paddingEnd="8dp"
-			android:visibility="gone"/>
 
 		<LinearLayout
 			android:layout_width="match_parent"

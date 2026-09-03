@@ -46,6 +46,8 @@ import biz.logicminds.buelltune.chat.ConversationEntity
 import biz.logicminds.buelltune.chat.EcmTools
 import biz.logicminds.buelltune.chat.ProviderId
 import biz.logicminds.buelltune.chat.Role
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.CancellationException
@@ -82,6 +84,7 @@ class ChatFragment : Fragment() {
     private lateinit var newConversationButton: Button
     private lateinit var noConversationsMessage: TextView
     private lateinit var conversationList: RecyclerView
+    private lateinit var promptChips: ChipGroup
 
     private lateinit var backButton: Button
     private lateinit var conversationTitle: TextView
@@ -96,6 +99,21 @@ class ChatFragment : Fragment() {
     private var currentConversation: ConversationEntity? = null
     private var messagesJob: Job? = null
     private var sendJob: Job? = null
+
+    /**
+     * R20's five predefined prompt chips: [chatChipLabel] is the short chip
+     * text, [chatChipPrompt] the full template question sent as the chip's
+     * conversation's first turn (see [startConversationFromChip]).
+     */
+    private data class PromptChipDefinition(val chatChipLabel: Int, val chatChipPrompt: Int)
+
+    private val promptChipDefinitions = listOf(
+        PromptChipDefinition(R.string.chat_chip_health_check_label, R.string.chat_chip_health_check_prompt),
+        PromptChipDefinition(R.string.chat_chip_tps_zero_label, R.string.chat_chip_tps_zero_prompt),
+        PromptChipDefinition(R.string.chat_chip_afv_label, R.string.chat_chip_afv_prompt),
+        PromptChipDefinition(R.string.chat_chip_error_codes_label, R.string.chat_chip_error_codes_prompt),
+        PromptChipDefinition(R.string.chat_chip_pre_ride_label, R.string.chat_chip_pre_ride_prompt),
+    )
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.chat, container, false)
@@ -121,6 +139,7 @@ class ChatFragment : Fragment() {
         messageList.adapter = messageAdapter
 
         wireListeners()
+        populatePromptChips()
 
         viewLifecycleOwner.lifecycleScope.launch {
             chatRepository.conversations.collectLatest { conversations ->
@@ -145,6 +164,7 @@ class ChatFragment : Fragment() {
         newConversationButton = view.findViewById(R.id.newConversationButton)
         noConversationsMessage = view.findViewById(R.id.noConversationsMessage)
         conversationList = view.findViewById(R.id.conversationList)
+        promptChips = view.findViewById(R.id.promptChips)
 
         backButton = view.findViewById(R.id.backButton)
         conversationTitle = view.findViewById(R.id.conversationTitle)
@@ -203,7 +223,7 @@ class ChatFragment : Fragment() {
 
     // --- New conversation (R10, R15) ---
 
-    private fun showNewConversationPicker() {
+    private fun showNewConversationPicker(onProviderChosen: (ProviderId) -> Unit = { createConversation(it) }) {
         val providers = AppPreferences.configuredProviders(requireContext())
         if (providers.isEmpty()) {
             Toast.makeText(requireContext(), R.string.chat_no_providers_configured, Toast.LENGTH_LONG).show()
@@ -212,23 +232,28 @@ class ChatFragment : Fragment() {
         val labels = providers.map { it.name }.toTypedArray()
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.chat_choose_provider_title)
-            .setItems(labels) { _, index -> createConversation(providers[index]) }
+            .setItems(labels) { _, index -> onProviderChosen(providers[index]) }
             .show()
     }
 
     private fun createConversation(providerId: ProviderId) {
         viewLifecycleOwner.lifecycleScope.launch {
-            // "default" is the persisted modelId column (KD5) - ChatAgentFactory
-            // resolves the real Koog LLModel from providerId/credentials alone
-            // today, so no richer value is actually read back out of this column.
-            val title = getString(
-                R.string.chat_default_conversation_title,
-                DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date()),
-            )
-            val conversationId = chatRepository.createConversation(providerId, "default", title)
-            val conversation = chatRepository.conversations.first().first { it.id == conversationId }
-            showConversation(conversation)
+            showConversation(createConversationEntity(providerId))
         }
+    }
+
+    /**
+     * "default" is the persisted modelId column (KD5) - ChatAgentFactory
+     * resolves the real Koog LLModel from providerId/credentials alone
+     * today, so no richer value is actually read back out of this column.
+     */
+    private suspend fun createConversationEntity(providerId: ProviderId): ConversationEntity {
+        val title = getString(
+            R.string.chat_default_conversation_title,
+            DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date()),
+        )
+        val conversationId = chatRepository.createConversation(providerId, "default", title)
+        return chatRepository.conversations.first().first { it.id == conversationId }
     }
 
     private fun confirmDeleteConversation(conversation: ConversationEntity) {
@@ -247,6 +272,53 @@ class ChatFragment : Fragment() {
             .show()
     }
 
+    // --- Prompt chips (R20) ---
+
+    /**
+     * Inflates [promptChipDefinitions] into [promptChips] once at view
+     * creation. Reveals the (parent-hidden-by-default) `ChipGroup` itself -
+     * actual on-screen visibility still tracks [listContainer]'s own
+     * visibility, so nothing shows while a conversation is open or setup is
+     * pending.
+     */
+    private fun populatePromptChips() {
+        promptChips.removeAllViews()
+        for (definition in promptChipDefinitions) {
+            val chip = Chip(requireContext())
+            chip.text = getString(definition.chatChipLabel)
+            chip.isClickable = true
+            chip.isCheckable = false
+            chip.setOnClickListener { startConversationFromChip(getString(definition.chatChipPrompt)) }
+            promptChips.addView(chip)
+        }
+        promptChips.visibility = View.VISIBLE
+    }
+
+    /**
+     * Tapping a chip both picks a provider and starts a brand-new
+     * conversation (R20) - unlike [newConversationButton]'s picker (R10),
+     * which always lets the rider confirm/choose, a chip is a one-tap
+     * shortcut: with exactly one provider configured it is used directly,
+     * only falling back to [showNewConversationPicker]'s AlertDialog when
+     * there is a real choice to make.
+     */
+    private fun startConversationFromChip(templateText: String) {
+        val providers = AppPreferences.configuredProviders(requireContext())
+        if (providers.size == 1) {
+            createConversationAndSend(providers.first(), templateText)
+        } else {
+            showNewConversationPicker { providerId -> createConversationAndSend(providerId, templateText) }
+        }
+    }
+
+    private fun createConversationAndSend(providerId: ProviderId, text: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val conversation = createConversationEntity(providerId)
+            showConversation(conversation)
+            sendText(conversation, text)
+        }
+    }
+
     // --- Sending a turn (R12, R19) ---
 
     private fun sendCurrentMessage() {
@@ -256,7 +328,10 @@ class ChatFragment : Fragment() {
             return
         }
         messageInput.setText("")
+        sendText(conversation, text)
+    }
 
+    private fun sendText(conversation: ConversationEntity, text: String) {
         val providerId = ProviderId.valueOf(conversation.providerId)
         val credentials = AppPreferences.credentialsFor(requireContext(), providerId)
 

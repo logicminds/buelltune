@@ -44,26 +44,6 @@ data class ProviderCredentials(
 )
 
 /**
- * v1 placeholder instructing the model on the [SuggestionCard] marker
- * convention (KTD8) so the suggestion mechanism (R2) works end-to-end today.
- * `SystemPrompt.CONTENT`'s full DDFI-2 domain-fact seeding (R21, R22) is
- * U10's file (`chat/SystemPrompt.kt`, depends on this unit) - this constant
- * is superseded there, not duplicated.
- */
-private const val PLACEHOLDER_SYSTEM_PROMPT = """
-You are a diagnostic assistant for a Buell motorcycle's DDFI-2 ECM. You can
-read the bike's current and stored state through the tools provided, but you
-can never write, reset, or flash anything - those tools do not exist for you.
-
-When you conclude the rider should perform a write, reset, or flash, end your
-answer with exactly one fenced line in this form, naming the existing screen
-where the rider performs the action manually:
-[[SUGGEST:<drawer-item-id>|<short action label>]]
-For example: [[SUGGEST:nav_setup|Reset TPS zero]]
-Never claim to have performed the action yourself.
-"""
-
-/**
  * Resolves a Koog [PromptExecutor]/[LLModel] pair for [providerId] and binds
  * it, plus [ecmTools]' read-only tool registry, into a [ChatAgent]. This is
  * the only place a real, network-calling [PromptExecutor] gets constructed
@@ -83,7 +63,7 @@ class ChatAgentFactory {
             promptExecutor = executor,
             llmModel = model,
             toolRegistry = ecmToolRegistry(ecmTools),
-            systemPrompt = PLACEHOLDER_SYSTEM_PROMPT,
+            systemPrompt = SystemPrompt.CONTENT,
             onToolCallStarting = onToolCallStarting,
         )
     }
