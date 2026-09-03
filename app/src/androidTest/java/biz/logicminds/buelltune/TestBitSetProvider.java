@@ -37,7 +37,7 @@ public class TestBitSetProvider {
 
 	@Before
 	public void setUp() {
-		p = BitSetProvider.getInstance(ApplicationProvider.getApplicationContext());
+		p = AppContainer.from(ApplicationProvider.getApplicationContext()).getBitSetProvider();
 	}
 
 	 @Test

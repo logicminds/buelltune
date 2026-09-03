@@ -41,7 +41,7 @@ public class TestVariableProvider{
 
 	@Before
 	public void setUp() {
-		provider = VariableProvider.getInstance(ApplicationProvider.getApplicationContext());
+		provider = AppContainer.from(ApplicationProvider.getApplicationContext()).getVariableProvider();
 	}
 
 	@Test
