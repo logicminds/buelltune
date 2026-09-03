@@ -55,17 +55,4 @@
 			android:inputType="textUri"
 			android:title="@string/llm_ollama_base_url_title" />
 	</PreferenceCategory>
-	<PreferenceCategory
-		android:key="llm_bedrock_category"
-		android:title="@string/llm_bedrock_category">
-		<EditTextPreference
-			android:key="llm_bedrock_api_key"
-			android:inputType="textPassword"
-			android:title="@string/llm_bedrock_api_key_title"
-			app:useSimpleSummaryProvider="false" />
-		<EditTextPreference
-			android:key="llm_bedrock_region"
-			android:inputType="text"
-			android:title="@string/llm_bedrock_region_title" />
-	</PreferenceCategory>
 </PreferenceScreen>

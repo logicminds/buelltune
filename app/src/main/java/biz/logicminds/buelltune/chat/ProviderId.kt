@@ -22,6 +22,15 @@ package biz.logicminds.buelltune.chat
  * provider is available from v1, not "Anthropic first, others added later."
  * Kimi/Moonshot is reached through [OPENROUTER] rather than a dedicated
  * entry, since Koog does not name it as a first-class provider.
+ *
+ * AWS Bedrock is deliberately excluded (KD4 correction, U5): Koog 1.2.0's
+ * `prompt-executor-bedrock-client-android` artifact compiles to a single
+ * internal `Stub` class on the Android target - no `BedrockLLMClient`,
+ * `BedrockModels`, or credential provider types exist to construct
+ * (verified by decompiling the resolved dependency). Bedrock's JVM-only AWS
+ * SDK client isn't ported to Koog's Android target as of this version;
+ * revisit if a later Koog release adds it, or a future unit hand-rolls an
+ * AWS SigV4 `LLMClient` directly (out of proportion for this feature).
  */
 enum class ProviderId {
     ANTHROPIC,
@@ -30,5 +39,4 @@ enum class ProviderId {
     DEEPSEEK,
     OPENROUTER,
     OLLAMA,
-    BEDROCK,
 }

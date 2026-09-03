@@ -172,25 +172,11 @@ object AppPreferences {
     fun ollamaBaseUrl(context: Context): String? = defaultPrefs(context).getString("llm_ollama_base_url", null)
 
     /**
-     * AWS Bedrock bearer-token API key, set via the `llm_bedrock_api_key`
-     * `EditTextPreference`; `null` until configured. Koog's `BedrockLLMClient`
-     * takes a single `StaticBearerTokenProvider` bearer token (`BEDROCK_API_KEY`
-     * in its own docs), not separate IAM access/secret keys.
-     */
-    @JvmStatic
-    fun bedrockApiKey(context: Context): String? = defaultPrefs(context).getString("llm_bedrock_api_key", null)
-
-    /** AWS Bedrock region, set via the `llm_bedrock_region` `EditTextPreference`; `null` until configured (Koog's `BedrockClientSettings` defaults to `us-west-2` when unset). */
-    @JvmStatic
-    fun bedrockRegion(context: Context): String? = defaultPrefs(context).getString("llm_bedrock_region", null)
-
-    /**
      * Providers with a non-blank credential set, in [ProviderId] declaration order. Ollama counts
      * as configured on a non-blank base URL alone (R11: no API key, just a reachable server);
-     * Bedrock is configured on its bearer-token API key alone (region is optional -- Koog's
-     * `BedrockClientSettings` supplies a default region); every other provider requires only its
-     * single API key to be non-blank. Backs the R14 setup-prompt gate and the new-conversation
-     * provider picker (U9).
+     * every other provider requires only its single API key to be non-blank. Backs the R14
+     * setup-prompt gate and the new-conversation provider picker (U9). AWS Bedrock has no
+     * accessor here: not offered as a provider (see [ProviderId]'s KDoc for why).
      */
     @JvmStatic
     fun configuredProviders(context: Context): List<ProviderId> {
@@ -201,7 +187,6 @@ object AppPreferences {
         if (!deepSeekApiKey(context).isNullOrBlank()) configured.add(ProviderId.DEEPSEEK)
         if (!openRouterApiKey(context).isNullOrBlank()) configured.add(ProviderId.OPENROUTER)
         if (!ollamaBaseUrl(context).isNullOrBlank()) configured.add(ProviderId.OLLAMA)
-        if (!bedrockApiKey(context).isNullOrBlank()) configured.add(ProviderId.BEDROCK)
         return configured
     }
 }
