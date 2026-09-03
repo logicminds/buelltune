@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.ksp)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -28,7 +29,7 @@ android {
         versionCode = 2
         versionName = "0.1.1"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -52,7 +53,7 @@ android {
         buildConfig = true
         compose = true
     }
-    compileSdk = 36
+    compileSdk = 37
     testOptions {
         unitTests {
             isReturnDefaultValues = true
@@ -101,6 +102,10 @@ dependencies {
     implementation(libs.drawerlayout)
     implementation(libs.usbserial)
     implementation(libs.documentfile)
+    implementation(libs.koog.agents)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.preference.ktx)
+    implementation(libs.recyclerview)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
