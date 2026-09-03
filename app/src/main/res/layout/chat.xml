@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+			 xmlns:tools="http://schemas.android.com/tools"
+			 android:id="@+id/chatRoot"
+			 android:layout_width="match_parent"
+			 android:layout_height="match_parent">
+
+	<!-- R14: shown when AppPreferences.configuredProviders() is empty. -->
+	<LinearLayout
+		android:id="@+id/setupContainer"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:orientation="vertical"
+		android:gravity="center"
+		android:padding="24dp"
+		android:visibility="gone">
+
+		<TextView
+			android:id="@+id/setupMessage"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:gravity="center"
+			android:text="@string/chat_setup_prompt_message"
+			android:textAppearance="@style/TextAppearance.AppCompat.Medium"/>
+
+		<Button
+			android:id="@+id/openSettingsButton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="16dp"
+			android:text="@string/chat_setup_prompt_button"/>
+
+	</LinearLayout>
+
+	<!-- R15: browsable conversation list. -->
+	<LinearLayout
+		android:id="@+id/listContainer"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:orientation="vertical"
+		android:visibility="gone">
+
+		<LinearLayout
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:orientation="horizontal"
+			android:gravity="center_vertical"
+			android:padding="12dp">
+
+			<TextView
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:text="@string/chat_conversations_title"
+				android:textAppearance="@style/TextAppearance.AppCompat.Large"/>
+
+			<Button
+				android:id="@+id/newConversationButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="@string/chat_new_conversation"/>
+
+		</LinearLayout>
+
+		<TextView
+			android:id="@+id/noConversationsMessage"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:padding="24dp"
+			android:gravity="center"
+			android:text="@string/chat_no_conversations"
+			android:visibility="gone"/>
+
+		<androidx.recyclerview.widget.RecyclerView
+			android:id="@+id/conversationList"
+			android:layout_width="match_parent"
+			android:layout_height="0dp"
+			android:layout_weight="1"
+			android:clipToPadding="false"
+			android:paddingStart="8dp"
+			android:paddingEnd="8dp"
+			tools:listitem="@layout/chat_conversation_item"/>
+
+	</LinearLayout>
+
+	<!-- R19: message list, input, send button, tool-call indicator, prompt chips (U10). -->
+	<LinearLayout
+		android:id="@+id/conversationContainer"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:orientation="vertical"
+		android:visibility="gone">
+
+		<LinearLayout
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:orientation="horizontal"
+			android:gravity="center_vertical"
+			android:padding="8dp">
+
+			<Button
+				android:id="@+id/backButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="@string/chat_back"/>
+
+			<TextView
+				android:id="@+id/conversationTitle"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:layout_marginStart="12dp"
+				android:ellipsize="end"
+				android:maxLines="1"
+				android:textAppearance="@style/TextAppearance.AppCompat.Medium"/>
+
+		</LinearLayout>
+
+		<androidx.recyclerview.widget.RecyclerView
+			android:id="@+id/messageList"
+			android:layout_width="match_parent"
+			android:layout_height="0dp"
+			android:layout_weight="1"
+			android:clipToPadding="false"
+			android:paddingStart="8dp"
+			android:paddingEnd="8dp"
+			tools:listitem="@layout/chat_message_item"/>
+
+		<!-- R12/R19: "Reading ECM: <tool>" indicator, visible only while a sendMessage call is in flight. -->
+		<TextView
+			android:id="@+id/toolCallStatus"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:paddingStart="12dp"
+			android:paddingEnd="12dp"
+			android:paddingBottom="4dp"
+			android:textStyle="italic"
+			android:textAppearance="@style/TextAppearance.AppCompat.Small"
+			android:visibility="gone"
+			tools:text="Reading ECM: read_live_data"
+			tools:visibility="visible"/>
+
+		<!-- U10 populates these chips; left empty/gone here as the container insertion point. -->
+		<com.google.android.material.chip.ChipGroup
+			android:id="@+id/promptChips"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:paddingStart="8dp"
+			android:paddingEnd="8dp"
+			android:visibility="gone"/>
+
+		<LinearLayout
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:orientation="horizontal"
+			android:padding="8dp"
+			android:gravity="center_vertical">
+
+			<EditText
+				android:id="@+id/messageInput"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:hint="@string/chat_message_hint"
+				android:inputType="textCapSentences|textMultiLine"
+				android:importantForAutofill="no"
+				android:maxLines="4"/>
+
+			<Button
+				android:id="@+id/sendButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginStart="8dp"
+				android:text="@string/chat_send"/>
+
+		</LinearLayout>
+
+	</LinearLayout>
+
+</FrameLayout>

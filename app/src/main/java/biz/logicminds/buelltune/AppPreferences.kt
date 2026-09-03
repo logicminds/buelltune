@@ -21,6 +21,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
 import android.preference.PreferenceManager
+import biz.logicminds.buelltune.chat.ProviderCredentials
 import biz.logicminds.buelltune.chat.ProviderId
 
 /**
@@ -188,5 +189,24 @@ object AppPreferences {
         if (!openRouterApiKey(context).isNullOrBlank()) configured.add(ProviderId.OPENROUTER)
         if (!ollamaBaseUrl(context).isNullOrBlank()) configured.add(ProviderId.OLLAMA)
         return configured
+    }
+
+    /**
+     * Resolves [providerId]'s currently-saved [ProviderCredentials] (KTD6) -
+     * the shape [biz.logicminds.buelltune.chat.ChatRepository.sendMessage]
+     * needs on every call (credentials are never persisted alongside a
+     * conversation, see that method's KDoc). Callers should re-read this
+     * immediately before each send rather than caching it, so an
+     * in-[LlmSettingsActivity] credential edit takes effect on the next
+     * turn without an app restart.
+     */
+    @JvmStatic
+    fun credentialsFor(context: Context, providerId: ProviderId): ProviderCredentials = when (providerId) {
+        ProviderId.ANTHROPIC -> ProviderCredentials(apiKey = anthropicApiKey(context))
+        ProviderId.OPENAI -> ProviderCredentials(apiKey = openAiApiKey(context))
+        ProviderId.GOOGLE -> ProviderCredentials(apiKey = googleApiKey(context))
+        ProviderId.DEEPSEEK -> ProviderCredentials(apiKey = deepSeekApiKey(context))
+        ProviderId.OPENROUTER -> ProviderCredentials(apiKey = openRouterApiKey(context))
+        ProviderId.OLLAMA -> ProviderCredentials(baseUrl = ollamaBaseUrl(context))
     }
 }

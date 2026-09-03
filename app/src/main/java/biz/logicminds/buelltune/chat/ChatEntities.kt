@@ -45,6 +45,13 @@ data class ConversationEntity(
  * deliberately never read back into the model-bound turn list
  * [ChatRepository] builds for [ChatAgent.send] (KTD7, R17): only [role] and
  * [content] cross that boundary.
+ *
+ * [suggestionScreenId]/[suggestionLabel] persist an assistant row's
+ * [SuggestionCard] (KTD8, R2, AE3), if the model attached one - both `null`
+ * on every other row. Without this, [ChatRepository.sendMessage] would
+ * discard [ChatAgentResult.suggestion] the moment its in-memory result goes
+ * out of scope, and a resumed conversation could never re-render a
+ * suggestion card it had already shown once.
  */
 @Entity(
     tableName = "chat_messages",
@@ -65,4 +72,6 @@ data class ChatMessageEntity(
     val content: String,
     val toolCallsJson: String?,
     val createdAt: Long,
+    val suggestionScreenId: String? = null,
+    val suggestionLabel: String? = null,
 )

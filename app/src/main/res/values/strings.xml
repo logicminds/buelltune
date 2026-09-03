@@ -274,4 +274,21 @@
 	<string name="llm_openrouter_key_title">API Key</string>
 	<string name="llm_ollama_category">Ollama</string>
 	<string name="llm_ollama_base_url_title">Server Base URL</string>
+	<string name="chat_title">Chat</string>
+	<string name="chat_setup_prompt_message">Configure an AI provider to start chatting with your ECM.</string>
+	<string name="chat_setup_prompt_button">Configure AI Provider</string>
+	<string name="chat_conversations_title">Conversations</string>
+	<string name="chat_no_conversations">No conversations yet. Tap \"New Conversation\" to start.</string>
+	<string name="chat_new_conversation">New Conversation</string>
+	<string name="chat_choose_provider_title">Choose AI Provider</string>
+	<string name="chat_default_conversation_title">Chat %1$s</string>
+	<string name="chat_delete_conversation">Delete</string>
+	<string name="chat_delete_conversation_title">Delete Conversation</string>
+	<string name="chat_delete_conversation_message">Delete \"%1$s\"? This cannot be undone.</string>
+	<string name="chat_cancel">Cancel</string>
+	<string name="chat_message_hint">Ask about your ECM…</string>
+	<string name="chat_send">Send</string>
+	<string name="chat_back">Back</string>
+	<string name="chat_tool_call_status">Reading ECM: %1$s</string>
+	<string name="chat_no_providers_configured">No AI providers are configured. Configure one first.</string>
 </resources>

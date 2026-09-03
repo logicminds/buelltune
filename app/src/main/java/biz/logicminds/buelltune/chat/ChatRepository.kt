@@ -19,6 +19,9 @@ package biz.logicminds.buelltune.chat
 
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
@@ -64,14 +67,39 @@ fun ChatAgent.asChatSender(): ChatSender = ChatSender { text, priorTurns -> send
  */
 class ChatRepository(
     private val database: ChatDatabase,
-    private val bindAgent: (ProviderId, ProviderCredentials, EcmTools) -> ChatSender,
+    private val bindAgent: (ProviderId, ProviderCredentials, EcmTools, (String) -> Unit) -> ChatSender,
 ) {
+    /**
+     * Back-compat binding shape for callers/tests that don't care about
+     * in-flight tool-call names - the trailing `onToolCallStarting`
+     * callback below is simply discarded. The production
+     * [ChatDatabase]/[ChatAgentFactory] constructor wires it for real (see
+     * [toolCallEvents]).
+     */
+    constructor(database: ChatDatabase, bindAgent: (ProviderId, ProviderCredentials, EcmTools) -> ChatSender) : this(
+        database,
+        { providerId, credentials, ecmTools, _ -> bindAgent(providerId, credentials, ecmTools) },
+    )
+
     constructor(database: ChatDatabase, chatAgentFactory: ChatAgentFactory) : this(
         database,
-        { providerId, credentials, ecmTools -> chatAgentFactory.create(providerId, credentials, ecmTools).asChatSender() },
+        { providerId, credentials, ecmTools, onToolCallStarting ->
+            chatAgentFactory.create(providerId, credentials, ecmTools, onToolCallStarting).asChatSender()
+        },
     )
 
     private val agentsByConversation = ConcurrentHashMap<Long, ChatSender>()
+
+    private val toolCallEventsMutable = MutableSharedFlow<String>(extraBufferCapacity = 8)
+
+    /**
+     * Per-call "Reading ECM: `<tool>`" names (R12/R19), emitted while any
+     * bound [ChatAgent]'s [sendMessage] call is mid-turn. Not scoped to a
+     * conversation id: the UI only observes this for the duration of its
+     * own in-flight [sendMessage] call, so cross-conversation interleaving
+     * (this app has no concurrent-send UI path) is not a concern.
+     */
+    val toolCallEvents: SharedFlow<String> = toolCallEventsMutable.asSharedFlow()
 
     /** The rider-browsable conversation list (R15), newest first. */
     val conversations: Flow<List<ConversationEntity>>
@@ -107,11 +135,16 @@ class ChatRepository(
      * turn, replays every prior turn's `role`/`content` (KTD7 - never
      * `toolCallsJson`) to the bound [ChatSender] alongside [text], then
      * persists the assistant's reply with [ChatAgentResult.toolsCalled]
-     * JSON-encoded for on-screen display only (R12). [credentials] is only
-     * actually consulted the first time this repository instance binds this
-     * conversation's [ChatSender] (see class doc) - callers always pass the
-     * caller's currently-configured credentials for [ConversationEntity.providerId],
-     * typically read fresh from `AppPreferences` immediately before the call.
+     * JSON-encoded for on-screen display only (R12), plus
+     * [ChatAgentResult.suggestion] (if any) as [ChatMessageEntity.suggestionScreenId]/
+     * [ChatMessageEntity.suggestionLabel] so a rendered [SuggestionCard]
+     * survives conversation resume (R2, AE3) instead of being discarded
+     * once the in-memory [ChatAgentResult] goes out of scope. [credentials]
+     * is only actually consulted the first time this repository instance
+     * binds this conversation's [ChatSender] (see class doc) - callers
+     * always pass the caller's currently-configured credentials for
+     * [ConversationEntity.providerId], typically read fresh from
+     * `AppPreferences` immediately before the call.
      */
     suspend fun sendMessage(conversationId: Long, text: String, ecmTools: EcmTools, credentials: ProviderCredentials) {
         val messageDao = database.chatMessageDao()
@@ -142,6 +175,8 @@ class ChatRepository(
                 content = result.displayText,
                 toolCallsJson = result.toolsCalled.takeIf { it.isNotEmpty() }
                     ?.let { Json.encodeToString(ListSerializer(String.serializer()), it) },
+                suggestionScreenId = result.suggestion?.screenId,
+                suggestionLabel = result.suggestion?.label,
                 createdAt = System.currentTimeMillis(),
             ),
         )
@@ -152,7 +187,9 @@ class ChatRepository(
         val conversation = database.conversationDao().observeAll().first()
             .firstOrNull { it.id == conversationId }
             ?: error("Unknown conversation $conversationId")
-        val sender = bindAgent(ProviderId.valueOf(conversation.providerId), credentials, ecmTools)
+        val sender = bindAgent(ProviderId.valueOf(conversation.providerId), credentials, ecmTools) { toolName ->
+            toolCallEventsMutable.tryEmit(toolName)
+        }
         agentsByConversation[conversationId] = sender
         return sender
     }

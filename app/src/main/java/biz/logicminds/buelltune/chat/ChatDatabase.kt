@@ -36,7 +36,7 @@ import androidx.room.RoomDatabase
  */
 @Database(
     entities = [ConversationEntity::class, ChatMessageEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class ChatDatabase : RoomDatabase() {
