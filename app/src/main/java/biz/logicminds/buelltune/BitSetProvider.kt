@@ -17,7 +17,6 @@
  */
 package biz.logicminds.buelltune
 
-import android.content.Context
 import biz.logicminds.buelltune.Constants.DataSource
 
 /**
@@ -26,14 +25,4 @@ import biz.logicminds.buelltune.Constants.DataSource
 abstract class BitSetProvider {
 
     abstract fun getBitSet(ecmId: String, name: String, source: DataSource): BitSet?
-
-    companion object {
-        /**
-         * Legacy singleton facade (KTD5): resolves the process-wide
-         * [AppContainer] from [ctx] instead of building/caching its own
-         * `@SuppressLint("StaticFieldLeak")` instance.
-         */
-        @JvmStatic
-        fun getInstance(ctx: Context): BitSetProvider = AppContainer.from(ctx).bitSetProvider
-    }
 }

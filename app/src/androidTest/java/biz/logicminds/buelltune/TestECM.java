@@ -39,8 +39,8 @@ public class TestECM{
 	public void setUp() throws Exception {
 		byte[] epd = TestUtils.readEEPROM();
 		byte[] rtd = TestUtils.readRTData();
-		ecm = ECM.getInstance(ApplicationProvider.getApplicationContext());
-		EEPROM eeprom = EEPROM.get("BUEIB", ApplicationProvider.getApplicationContext());
+		ecm = AppContainer.from(ApplicationProvider.getApplicationContext()).getEcm();
+		EEPROM eeprom = AppContainer.from(ApplicationProvider.getApplicationContext()).getDefinitionsProvider().getEeprom("BUEIB");
 		ecm.setEEPROM(eeprom);
 		ecm.setRuntimeData(rtd);
 		System.arraycopy(epd, 0, eeprom.getBytes(), 0, epd.length);

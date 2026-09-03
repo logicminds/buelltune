@@ -19,9 +19,7 @@ package biz.logicminds.buelltune.fragments;
 
 import android.app.Fragment;
 import android.bluetooth.BluetoothAdapter;
-import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -33,7 +31,7 @@ import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 
-import biz.logicminds.buelltune.Constants;
+import biz.logicminds.buelltune.AppPreferences;
 import biz.logicminds.buelltune.ECM;
 import biz.logicminds.buelltune.EEPROM;
 import biz.logicminds.buelltune.R;
@@ -44,7 +42,6 @@ public class MainFragment extends Fragment {
 
 	private ECM ecm;
 	private Spinner protocolSpinner;
-	private SharedPreferences prefs;
 
 	/**
 	 * Called when the activity is first created.
@@ -53,7 +50,6 @@ public class MainFragment extends Fragment {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		ecm = ECM.getInstance(getActivity());
-		prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
 
 		if (getArguments() != null) {
 			String deviceAddress = getArguments().getString("device");
@@ -76,7 +72,7 @@ public class MainFragment extends Fragment {
 		protocolSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
 			@Override
 			public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-				prefs.edit().putInt(Constants.PREFS_ECM_PROTOCOL, position).apply();
+				AppPreferences.setEcmProtocolIndex(getActivity(), position);
 			}
 
 			@Override

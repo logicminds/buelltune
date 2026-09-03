@@ -26,11 +26,13 @@ import static org.junit.Assert.assertNotNull;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
+import biz.logicminds.buelltune.AppContainer;
+
 @RunWith(AndroidJUnit4.class)
 public class TestEEPROM {
 	@Test
 	public void testVersion() {
-		EEPROM eeprom = EEPROM.get("BUEIB310 10-11-03", ApplicationProvider.getApplicationContext());
+		EEPROM eeprom = AppContainer.from(ApplicationProvider.getApplicationContext()).getDefinitionsProvider().getEeprom("BUEIB310 10-11-03");
 		assertNotNull(eeprom);
 		assertEquals(7, eeprom.getPageCount());
 		assertEquals(1206, eeprom.getPage(0).start());

@@ -22,11 +22,9 @@ import android.app.Activity;
 import android.app.AlertDialog.Builder;
 import android.app.Fragment;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
-import android.preference.PreferenceManager;
 import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.ContextMenu;
@@ -41,6 +39,7 @@ import android.widget.GridView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import biz.logicminds.buelltune.AppPreferences;
 import biz.logicminds.buelltune.Constants;
 import biz.logicminds.buelltune.ECM;
 import biz.logicminds.buelltune.EEPROM;
@@ -99,9 +98,8 @@ public class EEPROMFragment extends Fragment implements CellEditorDialogListener
 
 	@Override
 	public void onPrepareOptionsMenu(Menu menu) {
-		SharedPreferences pm = PreferenceManager.getDefaultSharedPreferences(getActivity());
 		menu.findItem(R.id.fetch).setEnabled(ecm.isConnected());
-		menu.findItem(R.id.burn).setEnabled(ecm.isConnected() && pm.getBoolean(Constants.PREFS_ENABLE_BURN, Boolean.FALSE));
+		menu.findItem(R.id.burn).setEnabled(ecm.isConnected() && AppPreferences.isBurnEnabled(getActivity()));
 		menu.findItem(R.id.save).setEnabled(ecm.isEepromRead());
 	}
 
@@ -172,8 +170,7 @@ public class EEPROMFragment extends Fragment implements CellEditorDialogListener
 		});
 
 		if (getArguments() != null && getArguments().getBoolean(ACTION_BURN)) {
-			SharedPreferences pm = PreferenceManager.getDefaultSharedPreferences(this.getActivity());
-			if (pm.getBoolean(Constants.PREFS_ENABLE_BURN, false)) {
+			if (AppPreferences.isBurnEnabled(getActivity())) {
 				new BurnTask(getActivity()).start();
 			} else {
 				Toast.makeText(getActivity(), R.string.eeprom_burning_disabled_by_configuration, Toast.LENGTH_LONG).show();

@@ -29,6 +29,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
+import biz.logicminds.buelltune.AppContainer
 import biz.logicminds.buelltune.ECM
 import biz.logicminds.buelltune.R
 import biz.logicminds.buelltune.activities.MainActivity
@@ -107,7 +108,7 @@ class EcmService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        ecm = ECM.getInstance(this)
+        ecm = AppContainer.from(this).ecm
         nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.cancel(RECORDING_ID) // Remove possible left-overs from a crash
         loop = PollRecordLoop(ecm, serviceScope)
@@ -145,8 +146,9 @@ class EcmService : Service() {
      * Begin a recording session. [logStream] and [ecm] are accepted for
      * legacy binary-compatibility with `LogFragment.startRecording()`'s
      * call site (`ecmDroidService.startRecording(out, interval.delay,
-     * ecm)`) - [ecm] is always the same [ECM.getInstance] singleton this
-     * service already holds, so it is not otherwise used here.
+     * ecm)`) - [ecm] is always the same [AppContainer]-provided [ECM]
+     * instance this service already holds, so it is not otherwise used
+     * here.
      */
     @Throws(IOException::class)
     fun startRecording(logStream: FileOutputStream, interval: Int, ecm: ECM) {

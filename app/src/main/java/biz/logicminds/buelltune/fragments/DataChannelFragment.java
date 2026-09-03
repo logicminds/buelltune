@@ -17,7 +17,6 @@
  */
 package biz.logicminds.buelltune.fragments;
 
-import android.app.Activity;
 import android.app.Fragment;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -25,8 +24,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.SharedPreferences;
-import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -38,6 +35,7 @@ import android.widget.ToggleButton;
 
 import androidx.annotation.Nullable;
 
+import biz.logicminds.buelltune.AppPreferences;
 import biz.logicminds.buelltune.Constants.Variables;
 import biz.logicminds.buelltune.DataChannelAdapter;
 import biz.logicminds.buelltune.ECM;
@@ -146,10 +144,9 @@ public class DataChannelFragment extends Fragment {
 		getActivity().bindService(new Intent(getActivity(), EcmService.class), serviceConnection, Context.BIND_AUTO_CREATE);
 
 		if (!Utils.isEmptyString(ecm.getId())) {
-			SharedPreferences prefs = getActivity().getPreferences(Activity.MODE_PRIVATE);
 			int i = 0;
 			for (String defvar : DEFAULT_CHANNELS) {
-				String var = prefs.getString("channel" + (i + 1), defvar);
+				String var = AppPreferences.dataChannel(getActivity(), i, defvar);
 				if (!Utils.isEmptyString(var)) {
 					Log.d(TAG, "Looking up variable " + var);
 					channels[i] = provider.getRtVariable(ecm.getId(), var);
@@ -200,14 +197,11 @@ public class DataChannelFragment extends Fragment {
 		if (Utils.isEmptyString(ecm.getId())) {
 			return;
 		}
-		SharedPreferences prefs = getActivity().getPreferences(Activity.MODE_PRIVATE);
-		Editor editor = prefs.edit();
+		String[] variableNames = new String[channels.length];
 		for (int i = 0; i < channels.length; i++) {
-			String value = channels[i] == null ? "" : channels[i].getName();
-			String key = "channel" + (i + 1);
-			Log.d(TAG, "Saving " + key + "=" + value);
-			editor.putString(key, value);
+			variableNames[i] = channels[i] == null ? null : channels[i].getName();
+			Log.d(TAG, "Saving channel" + (i + 1) + "=" + variableNames[i]);
 		}
-		editor.apply();
+		AppPreferences.saveDataChannels(getActivity(), variableNames);
 	}
 }
