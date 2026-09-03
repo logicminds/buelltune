@@ -103,6 +103,12 @@ dependencies {
     implementation(libs.usbserial)
     implementation(libs.documentfile)
     implementation(libs.koog.agents)
+    // koog-agents' own umbrella POM pulls stable Anthropic/OpenAI/Ollama/Bedrock
+    // clients but not OpenRouter/DeepSeek/Google (KD4): each is a separate
+    // publishable artifact on the same 1.2.0 release train, added explicitly.
+    implementation(libs.koog.openrouter.client)
+    implementation(libs.koog.deepseek.client)
+    implementation(libs.koog.google.client)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.preference.ktx)
     implementation(libs.recyclerview)
