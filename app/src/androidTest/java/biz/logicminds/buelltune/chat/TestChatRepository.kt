@@ -75,7 +75,7 @@ class TestChatRepository {
     @Test
     fun resumedConversation_repliesOmitPriorToolCallsFromModelContext() = runBlocking {
         val capturedPriorTurns = mutableListOf<List<ConversationTurn>>()
-        val repository = ChatRepository(database) { _, _, _ ->
+        val repository = ChatRepository(database) { _, _, _, _ ->
             ChatSender { _, priorTurns ->
                 capturedPriorTurns.add(priorTurns)
                 ChatAgentResult(displayText = "Reply", suggestion = null, toolsCalled = emptyList())
@@ -131,7 +131,7 @@ class TestChatRepository {
 
     @Test
     fun newConversation_persistsProviderAndModelImmutablyAtCreation() = runBlocking {
-        val repository = ChatRepository(database) { _, _, _ ->
+        val repository = ChatRepository(database) { _, _, _, _ ->
             ChatSender { _, _ -> ChatAgentResult(displayText = "unused", suggestion = null, toolsCalled = emptyList()) }
         }
 
@@ -157,7 +157,7 @@ class TestChatRepository {
 
     @Test
     fun deletingConversation_removesItsMessages() = runBlocking {
-        val repository = ChatRepository(database) { _, _, _ ->
+        val repository = ChatRepository(database) { _, _, _, _ ->
             ChatSender { _, _ -> ChatAgentResult(displayText = "Reply", suggestion = null, toolsCalled = listOf("read_live_data")) }
         }
 

@@ -71,7 +71,6 @@ import kotlinx.coroutines.launch
  * persists both sides of every turn.
  */
 class ChatFragment : Fragment() {
-    private val TAG = "ChatFragment"
 
     private lateinit var chatRepository: ChatRepository
     private lateinit var ecmTools: EcmTools
@@ -527,5 +526,9 @@ class ChatFragment : Fragment() {
                 }
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "ChatFragment"
     }
 }

@@ -17,7 +17,8 @@
  */
 package biz.logicminds.buelltune.chat
 
-import java.util.concurrent.ConcurrentHashMap
+import ai.koog.agents.core.agent.exception.AIAgentMaxNumberOfIterationsReachedException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -56,39 +57,25 @@ fun ChatAgent.asChatSender(): ChatSender = ChatSender { text, priorTurns -> send
  * provider/model (KD5) - the secondary constructor below is the production
  * shape, delegating to a real [ChatAgentFactory]. [ProviderCredentials] are
  * never persisted (secrets don't belong in [ChatDatabase]): [sendMessage]
- * takes them as a parameter on every call rather than caching them from
- * [createConversation] alone, since that cache would be empty - and every
- * resumed conversation's first send would fail - after any fresh app
- * process start (the normal case for R15's "browsable list the rider can
- * switch between" across app restarts). The resulting [ChatSender] itself
- * IS cached per conversation, once built, for the lifetime of this
- * repository instance, so credentials are only consulted again if this
- * instance's cache was never populated for that conversation.
+ * takes them as a parameter on every call, and [resolveAgent] rebinds a
+ * fresh [ChatSender] from them on every call too (never cached across
+ * calls) - [ChatAgentFactory.create] does no network I/O until the
+ * returned agent actually runs, so this costs nothing per send, and it is
+ * the only way an in-[biz.logicminds.buelltune.activities.LlmSettingsActivity]
+ * credential edit takes effect on an already-open conversation's very next
+ * turn, matching the contract `AppPreferences.credentialsFor`'s KDoc
+ * documents ("no app restart needed").
  */
 class ChatRepository(
     private val database: ChatDatabase,
     private val bindAgent: (ProviderId, ProviderCredentials, EcmTools, (String) -> Unit) -> ChatSender,
 ) {
-    /**
-     * Back-compat binding shape for callers/tests that don't care about
-     * in-flight tool-call names - the trailing `onToolCallStarting`
-     * callback below is simply discarded. The production
-     * [ChatDatabase]/[ChatAgentFactory] constructor wires it for real (see
-     * [toolCallEvents]).
-     */
-    constructor(database: ChatDatabase, bindAgent: (ProviderId, ProviderCredentials, EcmTools) -> ChatSender) : this(
-        database,
-        { providerId, credentials, ecmTools, _ -> bindAgent(providerId, credentials, ecmTools) },
-    )
-
     constructor(database: ChatDatabase, chatAgentFactory: ChatAgentFactory) : this(
         database,
         { providerId, credentials, ecmTools, onToolCallStarting ->
             chatAgentFactory.create(providerId, credentials, ecmTools, onToolCallStarting).asChatSender()
         },
     )
-
-    private val agentsByConversation = ConcurrentHashMap<Long, ChatSender>()
 
     private val toolCallEventsMutable = MutableSharedFlow<String>(extraBufferCapacity = 8)
 
@@ -127,7 +114,6 @@ class ChatRepository(
     /** Deletes [conversationId] and, via [ChatMessageEntity]'s cascading foreign key, every one of its messages. */
     suspend fun deleteConversation(conversationId: Long) {
         database.conversationDao().deleteById(conversationId)
-        agentsByConversation.remove(conversationId)
     }
 
     /**
@@ -140,11 +126,20 @@ class ChatRepository(
      * [ChatMessageEntity.suggestionLabel] so a rendered [SuggestionCard]
      * survives conversation resume (R2, AE3) instead of being discarded
      * once the in-memory [ChatAgentResult] goes out of scope. [credentials]
-     * is only actually consulted the first time this repository instance
-     * binds this conversation's [ChatSender] (see class doc) - callers
-     * always pass the caller's currently-configured credentials for
-     * [ConversationEntity.providerId], typically read fresh from
-     * `AppPreferences` immediately before the call.
+     * are always passed straight through to [resolveAgent] on every call -
+     * callers should read them fresh from `AppPreferences` immediately
+     * before calling.
+     *
+     * A failing [ChatSender.send] (Koog's tool-iteration cap, a malformed
+     * provider response, any other exception) is caught here rather than
+     * left to propagate: the user's turn above is already persisted by the
+     * time [ChatSender.send] runs, and every future call on this
+     * conversation replays every persisted turn as model context (KTD7)
+     * - leaving that turn without a matching assistant reply would silently
+     * feed a broken, unanswered turn back into the model forever. A short
+     * failure message is persisted as the assistant reply instead, so the
+     * conversation's turn alternation - and this call's caller - both see a
+     * definite, recoverable outcome.
      */
     suspend fun sendMessage(conversationId: Long, text: String, ecmTools: EcmTools, credentials: ProviderCredentials) {
         val messageDao = database.chatMessageDao()
@@ -166,7 +161,23 @@ class ChatRepository(
             .map { ConversationTurn(role = Role.valueOf(it.role), content = it.content) }
 
         val sender = resolveAgent(conversationId, ecmTools, credentials)
-        val result = sender.send(text, priorTurns)
+        val result = try {
+            sender.send(text, priorTurns)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: AIAgentMaxNumberOfIterationsReachedException) {
+            ChatAgentResult(
+                displayText = "I hit the tool-call limit for this turn before finishing - try asking a narrower question.",
+                suggestion = null,
+                toolsCalled = emptyList(),
+            )
+        } catch (e: Exception) {
+            ChatAgentResult(
+                displayText = "Something went wrong answering that (${e.message ?: e::class.simpleName}). Try again.",
+                suggestion = null,
+                toolsCalled = emptyList(),
+            )
+        }
 
         messageDao.insert(
             ChatMessageEntity(
@@ -183,14 +194,11 @@ class ChatRepository(
     }
 
     private suspend fun resolveAgent(conversationId: Long, ecmTools: EcmTools, credentials: ProviderCredentials): ChatSender {
-        agentsByConversation[conversationId]?.let { return it }
         val conversation = database.conversationDao().observeAll().first()
             .firstOrNull { it.id == conversationId }
             ?: error("Unknown conversation $conversationId")
-        val sender = bindAgent(ProviderId.valueOf(conversation.providerId), credentials, ecmTools) { toolName ->
+        return bindAgent(ProviderId.valueOf(conversation.providerId), credentials, ecmTools) { toolName ->
             toolCallEventsMutable.tryEmit(toolName)
         }
-        agentsByConversation[conversationId] = sender
-        return sender
     }
 }

@@ -55,14 +55,4 @@ sealed class ToolResult {
     @Serializable
     @SerialName("error")
     data class Error(val message: String) : ToolResult()
-
-    companion object {
-        fun ok(payload: JsonObject): ToolResult = Ok(payload)
-
-        fun notConnected(): ToolResult = NotConnected
-
-        fun eepromNotRead(): ToolResult = EepromNotRead
-
-        fun error(message: String): ToolResult = Error(message)
-    }
 }

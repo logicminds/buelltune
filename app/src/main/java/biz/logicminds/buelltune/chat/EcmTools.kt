@@ -64,22 +64,20 @@ class EcmTools(
 
     /** `get_ecm_info` (R3): identity of the connected ECM and its link. */
     suspend fun getEcmInfo(): ToolResult = withContext(Dispatchers.IO) {
-        if (!ecm.isConnected()) return@withContext ToolResult.notConnected()
-        ToolResult.ok(
-            buildJsonObject {
-                put("ecmId", ecm.getEEPROM()?.id)
-                put("version", ecm.getVersion())
-                put("protocol", ecm.getCurrentProtocol().toString())
-                put("transport", ecm.getTransport()?.let { it::class.simpleName })
-            },
-        )
+        if (!ecm.isConnected()) return@withContext ToolResult.NotConnected
+        ToolResult.Ok(buildJsonObject {
+            put("ecmId", ecm.getEEPROM()?.id)
+            put("version", ecm.getVersion())
+            put("protocol", ecm.getCurrentProtocol().toString())
+            put("transport", ecm.getTransport()?.let { it::class.simpleName })
+        })
     }
 
     /** `list_live_variables` (R3, R5): names + units only, no values. */
     suspend fun listLiveVariables(): ToolResult = withContext(Dispatchers.IO) {
-        if (!ecm.isConnected()) return@withContext ToolResult.notConnected()
+        if (!ecm.isConnected()) return@withContext ToolResult.NotConnected
         val ecmId = ecm.getId()
-            ?: return@withContext ToolResult.error("ECM id is unknown; EEPROM has not been read yet.")
+            ?: return@withContext ToolResult.Error("ECM id is unknown; EEPROM has not been read yet.")
         val names = variableProvider.getRtVariableNames(ecmId)
         val variables = buildJsonArray {
             for (name in names) {
@@ -91,7 +89,7 @@ class EcmTools(
                 )
             }
         }
-        ToolResult.ok(buildJsonObject { put("variables", variables) })
+        ToolResult.Ok(buildJsonObject { put("variables", variables) })
     }
 
     /**
@@ -101,13 +99,13 @@ class EcmTools(
      * result array (R5) rather than failing the whole call.
      */
     suspend fun readLiveData(variables: List<String>): ToolResult = withContext(Dispatchers.IO) {
-        if (!ecm.isConnected()) return@withContext ToolResult.notConnected()
+        if (!ecm.isConnected()) return@withContext ToolResult.NotConnected
         val ecmId = ecm.getId()
-            ?: return@withContext ToolResult.error("ECM id is unknown; EEPROM has not been read yet.")
+            ?: return@withContext ToolResult.Error("ECM id is unknown; EEPROM has not been read yet.")
         val rtData = try {
             ecm.readRTData()
         } catch (e: IOException) {
-            return@withContext ToolResult.error("Failed to read runtime data: ${e.message}")
+            return@withContext ToolResult.Error("Failed to read runtime data: ${e.message}")
         }
         val values = buildJsonArray {
             for (name in variables) {
@@ -131,28 +129,26 @@ class EcmTools(
                 }
             }
         }
-        ToolResult.ok(buildJsonObject { put("values", values) })
+        ToolResult.Ok(buildJsonObject { put("values", values) })
     }
 
     /** `read_error_codes` (R3, R6): both current and stored codes. */
     suspend fun readErrorCodes(): ToolResult = withContext(Dispatchers.IO) {
-        if (!ecm.isConnected()) return@withContext ToolResult.notConnected()
+        if (!ecm.isConnected()) return@withContext ToolResult.NotConnected
         val current = try {
             ecm.getErrors(ErrorType.CURRENT)
         } catch (e: IOException) {
-            return@withContext ToolResult.error("Failed to read current error codes: ${e.message}")
+            return@withContext ToolResult.Error("Failed to read current error codes: ${e.message}")
         }
         val stored = try {
             ecm.getErrors(ErrorType.STORED)
         } catch (e: IOException) {
-            return@withContext ToolResult.error("Failed to read stored error codes: ${e.message}")
+            return@withContext ToolResult.Error("Failed to read stored error codes: ${e.message}")
         }
-        ToolResult.ok(
-            buildJsonObject {
-                put("current", errorsToJson(current))
-                put("stored", errorsToJson(stored))
-            },
-        )
+        ToolResult.Ok(buildJsonObject {
+            put("current", errorsToJson(current))
+            put("stored", errorsToJson(stored))
+        })
     }
 
     /**
@@ -161,17 +157,15 @@ class EcmTools(
      * with, [ToolResult.notConnected] (plan's explicit U2 requirement).
      */
     suspend fun getEepromParameter(name: String): ToolResult = withContext(Dispatchers.IO) {
-        if (!ecm.isConnected()) return@withContext ToolResult.notConnected()
-        if (ecm.getEEPROM()?.isEepromRead() != true) return@withContext ToolResult.eepromNotRead()
+        if (!ecm.isConnected()) return@withContext ToolResult.NotConnected
+        if (ecm.getEEPROM()?.isEepromRead() != true) return@withContext ToolResult.EepromNotRead
         val variable = ecm.getEEPROMValue(name)
-            ?: return@withContext ToolResult.error("Unknown EEPROM parameter '$name'.")
-        ToolResult.ok(
-            buildJsonObject {
-                put("name", name)
-                put("value", variable.getFormattedValue())
-                put("unit", variable.unit)
-            },
-        )
+            ?: return@withContext ToolResult.Error("Unknown EEPROM parameter '$name'.")
+        ToolResult.Ok(buildJsonObject {
+            put("name", name)
+            put("value", variable.getFormattedValue())
+            put("unit", variable.unit)
+        })
     }
 
     /**
@@ -183,25 +177,23 @@ class EcmTools(
      */
     suspend fun getFuelMapRegion(cylinder: String, rpmRange: IntRange, tpsRange: IntRange): ToolResult =
         withContext(Dispatchers.IO) {
-            if (!ecm.isConnected()) return@withContext ToolResult.notConnected()
-            if (ecm.getEEPROM()?.isEepromRead() != true) return@withContext ToolResult.eepromNotRead()
+            if (!ecm.isConnected()) return@withContext ToolResult.NotConnected
+            if (ecm.getEEPROM()?.isEepromRead() != true) return@withContext ToolResult.EepromNotRead
             val variableName = when (cylinder.lowercase(Locale.ROOT)) {
                 "front" -> Constants.Variables.Tab_Fuel_Front
                 "rear" -> Constants.Variables.Tab_Fuel_Rear
-                else -> return@withContext ToolResult.error("Unknown cylinder '$cylinder'; expected 'front' or 'rear'.")
+                else -> return@withContext ToolResult.Error("Unknown cylinder '$cylinder'; expected 'front' or 'rear'.")
             }
             val variable = ecm.getEEPROMValue(variableName)
-                ?: return@withContext ToolResult.error("Fuel map table '$variableName' is not available for this ECM.")
+                ?: return@withContext ToolResult.Error("Fuel map table '$variableName' is not available for this ECM.")
             if (variable.type != Variable.DataType.TABLE && variable.type != Variable.DataType.MAP) {
-                return@withContext ToolResult.error("'$variableName' is not a 2-D fuel map table.")
+                return@withContext ToolResult.Error("'$variableName' is not a 2-D fuel map table.")
             }
             if (rpmRange.isEmpty() || tpsRange.isEmpty() ||
                 rpmRange.first < 0 || rpmRange.last >= variable.rows ||
                 tpsRange.first < 0 || tpsRange.last >= variable.cols
             ) {
-                return@withContext ToolResult.error(
-                    "Row/column range out of bounds: rows 0..${variable.rows - 1}, cols 0..${variable.cols - 1}.",
-                )
+                return@withContext ToolResult.Error("Row/column range out of bounds: rows 0..${variable.rows - 1}, cols 0..${variable.cols - 1}.")
             }
             val cells = buildJsonArray {
                 for (row in rpmRange) {
@@ -214,16 +206,14 @@ class EcmTools(
                     )
                 }
             }
-            ToolResult.ok(
-                buildJsonObject {
-                    put("cylinder", cylinder)
-                    put("variable", variableName)
-                    put("rowRange", buildJsonArray { add(JsonPrimitive(rpmRange.first)); add(JsonPrimitive(rpmRange.last)) })
-                    put("colRange", buildJsonArray { add(JsonPrimitive(tpsRange.first)); add(JsonPrimitive(tpsRange.last)) })
-                    put("cellUnit", "raw pulse-width units (uncorrected; not physical microseconds)")
-                    put("cells", cells)
-                },
-            )
+            ToolResult.Ok(buildJsonObject {
+                put("cylinder", cylinder)
+                put("variable", variableName)
+                put("rowRange", buildJsonArray { add(JsonPrimitive(rpmRange.first)); add(JsonPrimitive(rpmRange.last)) })
+                put("colRange", buildJsonArray { add(JsonPrimitive(tpsRange.first)); add(JsonPrimitive(tpsRange.last)) })
+                put("cellUnit", "raw pulse-width units (uncorrected; not physical microseconds)")
+                put("cells", cells)
+            })
         }
 
     private fun errorsToJson(errors: Collection<Error>?): JsonArray = buildJsonArray {

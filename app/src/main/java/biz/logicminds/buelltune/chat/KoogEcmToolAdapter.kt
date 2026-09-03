@@ -46,7 +46,7 @@ private val toolResultJson = Json { encodeDefaults = true }
 /** Runs [call], applying the shared 15s timeout (R12) and JSON-encoding the resulting [ToolResult] for the model. */
 private suspend fun runToolCall(call: suspend () -> ToolResult): String {
     val result = withTimeoutOrNull(TOOL_CALL_TIMEOUT_MS) { call() }
-        ?: ToolResult.error("Tool call timed out after ${TOOL_CALL_TIMEOUT_MS / 1000}s.")
+        ?: ToolResult.Error("Tool call timed out after ${TOOL_CALL_TIMEOUT_MS / 1000}s.")
     return toolResultJson.encodeToString(ToolResult.serializer(), result)
 }
 
