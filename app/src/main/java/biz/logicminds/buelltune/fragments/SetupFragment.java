@@ -19,7 +19,6 @@ package biz.logicminds.buelltune.fragments;
 
 import android.app.Fragment;
 import android.app.FragmentManager;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.CheckBoxPreference;
 import android.preference.EditTextPreference;
@@ -27,7 +26,6 @@ import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceGroup;
-import android.preference.PreferenceManager;
 import android.preference.PreferenceScreen;
 import android.text.InputType;
 import android.util.Log;
@@ -39,6 +37,7 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 
+import biz.logicminds.buelltune.AppPreferences;
 import biz.logicminds.buelltune.Bit;
 import biz.logicminds.buelltune.BitSet;
 import biz.logicminds.buelltune.Constants;
@@ -77,8 +76,7 @@ public class SetupFragment extends PreferenceFragment implements OnPreferenceCha
 		saveButton = (Button) view.findViewById(R.id.applyChanges);
 		saveButton.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
-				SharedPreferences pm = PreferenceManager.getDefaultSharedPreferences(getActivity());
-				if (!pm.getBoolean(Constants.PREFS_ENABLE_BURN, false)) {
+				if (!AppPreferences.isBurnEnabled(getActivity())) {
 					Toast.makeText(getActivity(), R.string.eeprom_burning_disabled_by_configuration, Toast.LENGTH_LONG).show();
 					return;
 				}
@@ -216,8 +214,7 @@ public class SetupFragment extends PreferenceFragment implements OnPreferenceCha
 		protected Exception doInBackground(Void... params) {
 			publishProgress(getText(R.string.refreshing_setup_values).toString());
 			PreferenceScreen root = SetupFragment.this.getPreferenceScreen();
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-			boolean hideMissing = ecm.isEepromRead() && prefs.getBoolean("hide_nonexistent_vars", false);
+			boolean hideMissing = ecm.isEepromRead() && AppPreferences.hideNonexistentVars(getActivity());
 			readPrefs(root, hideMissing);
 			return null;
 		}

@@ -25,8 +25,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.SharedPreferences;
-import android.content.SharedPreferences.Editor;
 import android.content.pm.PackageManager;
 import android.Manifest;
 import android.net.Uri;
@@ -34,7 +32,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
-import android.preference.PreferenceManager;
 import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -52,6 +49,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.documentfile.provider.DocumentFile;
 
+import biz.logicminds.buelltune.AppPreferences;
 import biz.logicminds.buelltune.Constants.Variables;
 import biz.logicminds.buelltune.ECM;
 import biz.logicminds.buelltune.service.EcmService;
@@ -69,9 +67,6 @@ import java.util.Observable;
 import java.util.Observer;
 
 public class LogFragment extends Fragment implements OnClickListener {
-	private static final String PREFS_CONVERTLOG = "convertlog";
-	private static final String PREFS_DELAY = "delay";
-	private static final String PREFS_KEEP_SCREEN_ON = "keep_screen_on";
 	private static final String TAG = "LogFragment";
 	private Button recordButton;
 	private TextView logStatus;
@@ -170,22 +165,17 @@ public class LogFragment extends Fragment implements OnClickListener {
 		activity.registerReceiver(receiver, new IntentFilter(EcmService.REALTIME_DATA), Context.RECEIVER_NOT_EXPORTED);
 		Spinner spinner = getView().findViewById(R.id.logInterval);
 		spinner.setEnabled(ecmDroidService == null || !ecm.isRecording());
-		SharedPreferences prefs = activity.getPreferences(Activity.MODE_PRIVATE);
-		spinner.setSelection(prefs.getInt(PREFS_DELAY, 0));
+		spinner.setSelection(AppPreferences.logIntervalIndex(activity));
 		Switch convert = getView().findViewById(R.id.logConvertCheckbox);
-		convert.setChecked(prefs.getBoolean(PREFS_CONVERTLOG, false));
+		convert.setChecked(AppPreferences.convertLogOnSave(activity));
 	}
 
 	@Override
 	public void onPause() {
 		super.onPause();
-		SharedPreferences prefs = getActivity().getPreferences(Activity.MODE_PRIVATE);
 		Spinner spinner = (Spinner) getView().findViewById(R.id.logInterval);
 		Switch convert = (Switch) getView().findViewById(R.id.logConvertCheckbox);
-		Editor editor = prefs.edit();
-		editor.putInt(PREFS_DELAY, spinner.getSelectedItemPosition());
-		editor.putBoolean(PREFS_CONVERTLOG, convert.isChecked());
-		editor.apply();
+		AppPreferences.saveLogSettings(getActivity(), spinner.getSelectedItemPosition(), convert.isChecked());
 		getActivity().unregisterReceiver(receiver);
 	}
 
@@ -240,8 +230,7 @@ public class LogFragment extends Fragment implements OnClickListener {
 	}
 
 	private void startRecording() throws IOException {
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-		String uri = prefs.getString("storage.location", null);
+		String uri = AppPreferences.storageLocation(getActivity());
 		if (uri == null) {
 			Toast.makeText(getActivity(), R.string.choose_storage_location, Toast.LENGTH_LONG).show();
 			Intent intent = new Intent(this.getActivity(), PrefsActivity.class);
@@ -258,7 +247,7 @@ public class LogFragment extends Fragment implements OnClickListener {
 		logFile = getContext().getContentResolver().openFileDescriptor(f.getUri(), "rw");
 		FileOutputStream out = new FileOutputStream(logFile.getFileDescriptor());
 
-		if (prefs.getBoolean(PREFS_KEEP_SCREEN_ON, false)) {
+		if (AppPreferences.keepScreenOnWhileRecording(getActivity())) {
 			Log.i(TAG, "Keeping Screen on while recording...");
 			getView().setKeepScreenOn(true);
 		}

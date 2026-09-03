@@ -19,7 +19,6 @@ package biz.logicminds.buelltune.activities;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.EditTextPreference;
@@ -27,11 +26,11 @@ import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.PreferenceActivity;
-import android.preference.PreferenceManager;
 import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
 
+import biz.logicminds.buelltune.AppPreferences;
 import biz.logicminds.buelltune.R;
 import biz.logicminds.buelltune.Utils;
 
@@ -63,8 +62,7 @@ public class PrefsActivity extends PreferenceActivity implements OnPreferenceCha
 		txt.setOnPreferenceChangeListener(this);
 
 		Preference storage = findPreference("storage_location");
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-		String storageLocation = prefs.getString("storage.location", null);
+		String storageLocation = AppPreferences.storageLocation(getApplicationContext());
 		storage.setSummary(storageLocation == null ? getString(R.string.setup_storage_hint) : Uri.parse(storageLocation).getLastPathSegment());
 		storage.setOnPreferenceClickListener(preference -> {
 			Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
@@ -83,10 +81,7 @@ public class PrefsActivity extends PreferenceActivity implements OnPreferenceCha
 				if (uri != null) {
 					getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
 							| Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-					SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-					SharedPreferences.Editor editor = prefs.edit();
-					editor.putString("storage.location", uri.toString());
-					editor.apply();
+					AppPreferences.setStorageLocation(getApplicationContext(), uri.toString());
 					Preference storage = findPreference("storage_location");
 					storage.setSummary(uri.getLastPathSegment());
 				}

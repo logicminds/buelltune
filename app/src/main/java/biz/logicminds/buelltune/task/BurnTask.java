@@ -20,11 +20,10 @@ package biz.logicminds.buelltune.task;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
-import android.content.SharedPreferences;
-import android.preference.PreferenceManager;
 import android.util.Log;
 import android.widget.Toast;
 
+import biz.logicminds.buelltune.AppPreferences;
 import biz.logicminds.buelltune.ECM;
 import biz.logicminds.buelltune.EEPROM;
 import biz.logicminds.buelltune.EEPROM.Page;
@@ -39,12 +38,10 @@ public class BurnTask extends ProgressDialogTask {
 	private static final String TAG = "BurnTask";
 	private ECM ecm;
 	private boolean changes = false;
-	private SharedPreferences prefs;
 
 	public BurnTask(Activity context) {
 		super(context, context.getString(R.string.burn_eeprom));
 		ecm = ECM.getInstance(context);
-		prefs = PreferenceManager.getDefaultSharedPreferences(context);
 	}
 
 	public void start() {
@@ -87,7 +84,7 @@ public class BurnTask extends ProgressDialogTask {
 			EEPROM eeprom = ecm.getEEPROM();
 			if (ecm.getEEPROM() != null) {
 				int i = 0;
-				boolean fast_burn = prefs.getBoolean("enable_fast_burning", false);
+				boolean fast_burn = AppPreferences.isFastBurnEnabled(context);
 				int count = eeprom.getPageCount();
 				for (Page pg : ecm.getEEPROM().getPages()) {
 					// Either write all pages (if no local modifications exist) or only the ones that are touched

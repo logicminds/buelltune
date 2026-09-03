@@ -32,7 +32,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -41,7 +40,6 @@ import android.hardware.usb.UsbManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.preference.PreferenceManager;
 
 import android.util.Log;
 import android.view.MenuItem;
@@ -70,7 +68,7 @@ import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 import com.hoho.android.usbserial.util.SerialInputOutputManager;
 import biz.logicminds.buelltune.BuildConfig;
-import biz.logicminds.buelltune.Constants;
+import biz.logicminds.buelltune.AppPreferences;
 import biz.logicminds.buelltune.ECM;
 import biz.logicminds.buelltune.service.EcmService;
 import biz.logicminds.buelltune.R;
@@ -424,8 +422,7 @@ public class MainActivity extends AppCompatActivity
 	private void connect() {
 		fab.setBackgroundTintList(TINT_CONNECTING);
 		fab.setImageResource(R.drawable.ic_connected);
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
-		String connectionType = prefs.getString(getString(R.string.prefs_conn_type), getString(R.string.prefs_bt_connection));
+		String connectionType = AppPreferences.connectionType(this);
 		if (getString(R.string.prefs_bt_connection).equals(connectionType)) {
 			BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 			if (adapter == null || !adapter.isEnabled()) {
@@ -440,10 +437,10 @@ public class MainActivity extends AppCompatActivity
 		} else if ("COM".equals(connectionType)) {
 			findCOMDevice();
 		} else {
-			String host = prefs.getString("tcp_host", null);
+			String host = AppPreferences.tcpHost(this);
 			int port = 0;
 			try {
-				port = Integer.parseInt(prefs.getString("tcp_port", "0"));
+				port = Integer.parseInt(AppPreferences.tcpPort(this));
 			} catch (NumberFormatException nfe) {
 			}
 
@@ -476,7 +473,7 @@ public class MainActivity extends AppCompatActivity
 	}
 
 	private ECM.Protocol getProtocol() {
-		return ECM.Protocol.values()[PreferenceManager.getDefaultSharedPreferences(this).getInt(Constants.PREFS_ECM_PROTOCOL, 0)];
+		return ECM.Protocol.values()[AppPreferences.ecmProtocolIndex(this)];
 	}
 
 	private class ConnectTask extends FetchTask {
