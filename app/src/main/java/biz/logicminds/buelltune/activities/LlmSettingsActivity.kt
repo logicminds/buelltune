@@ -33,9 +33,12 @@ import biz.logicminds.buelltune.R
  * already uses (see `AppPreferences.defaultPrefs`), so no second storage
  * mechanism is introduced -- only a modern authoring widget, per KTD6.
  *
- * Reached via `Intent` from Chat's setup prompt (R14) and its
- * new-conversation provider picker (R10/U9); it has no `main_drawer.xml`
- * entry of its own.
+ * Reached via `Intent` from Chat's setup prompt (R14, shown when zero
+ * providers are configured) and from the persistent "Providers" button on
+ * the conversation-list header (always available once a conversation
+ * exists to browse), so a rider can add, edit, or blank out a provider's
+ * key at any time, not only during first-run setup. It has no
+ * `main_drawer.xml` entry of its own.
  */
 class LlmSettingsActivity : AppCompatActivity() {
 

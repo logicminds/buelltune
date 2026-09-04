@@ -278,6 +278,7 @@
 	<string name="chat_setup_prompt_message">Configure an AI provider to start chatting with your ECM.</string>
 	<string name="chat_setup_prompt_button">Configure AI Provider</string>
 	<string name="chat_conversations_title">Conversations</string>
+	<string name="chat_manage_providers_button">Providers</string>
 	<string name="chat_no_conversations">No conversations yet. Tap \"New Conversation\" to start.</string>
 	<string name="chat_new_conversation">New Conversation</string>
 	<string name="chat_choose_provider_title">Choose AI Provider</string>
