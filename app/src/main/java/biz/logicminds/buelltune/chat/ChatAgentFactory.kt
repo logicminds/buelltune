@@ -19,12 +19,14 @@ package biz.logicminds.buelltune.chat
 
 import ai.koog.http.client.KoogHttpClient
 import ai.koog.http.client.ktor.KtorKoogHttpClient
+import ai.koog.prompt.executor.clients.LLMClient
 import ai.koog.prompt.executor.clients.anthropic.AnthropicLLMClient
 import ai.koog.prompt.executor.clients.anthropic.AnthropicModels
 import ai.koog.prompt.executor.clients.deepseek.DeepSeekLLMClient
 import ai.koog.prompt.executor.clients.deepseek.DeepSeekModels
 import ai.koog.prompt.executor.clients.google.GoogleLLMClient
 import ai.koog.prompt.executor.clients.google.GoogleModels
+import ai.koog.prompt.executor.clients.modelsById
 import ai.koog.prompt.executor.clients.openai.OpenAIClientSettings
 import ai.koog.prompt.executor.clients.openai.OpenAILLMClient
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
@@ -66,25 +68,35 @@ private val koogHttpClientFactory: KoogHttpClient.Factory =
 private const val KIMI_DEFAULT_BASE_URL = "https://api.moonshot.ai/v1"
 
 /**
+ * The capability set assumed for a model id Koog's static catalog has no
+ * entry for - Kimi's flagship default below, and any rider-picked id
+ * [assumedCapableModel] builds for a custom OpenAI-compatible base URL,
+ * Kimi's own live model list, or an Ollama model pulled locally (see
+ * [listModels]/[resolveModel]). [LLMCapability.Tools] is required for
+ * [EcmTools] to work at all.
+ */
+private val ASSUMED_CHAT_CAPABILITIES = listOf(
+    LLMCapability.Temperature,
+    LLMCapability.Tools,
+    LLMCapability.ToolChoice,
+    LLMCapability.Schema.JSON.Basic,
+)
+
+/**
  * Koog 1.2.0 has no first-class Kimi/Moonshot client or model catalog
  * (unlike OpenAI, Anthropic, etc.), so this is a hand-built [LLModel] for
  * Moonshot's current flagship chat-completions model id, `kimi-k2.6`
  * (confirmed against platform.kimi.ai's own Chat Completions API docs,
- * which document Tool Use/function calling support - required for
- * [EcmTools]). [LLMProvider.OpenAI] is deliberately reused as the
- * capability/request-shaping profile: Moonshot's endpoint speaks the same
- * OpenAI chat-completions wire protocol [OpenAILLMClient] already
- * implements, it is not a mislabel of the actual model.
+ * which document Tool Use/function calling support). [LLMProvider.OpenAI]
+ * is deliberately reused as the capability/request-shaping profile:
+ * Moonshot's endpoint speaks the same OpenAI chat-completions wire
+ * protocol [OpenAILLMClient] already implements, it is not a mislabel of
+ * the actual model.
  */
-private val KIMI_K2_MODEL = LLModel(
+private val KIMI_DEFAULT_MODEL = LLModel(
     provider = LLMProvider.OpenAI,
     id = "kimi-k2.6",
-    capabilities = listOf(
-        LLMCapability.Temperature,
-        LLMCapability.Tools,
-        LLMCapability.ToolChoice,
-        LLMCapability.Schema.JSON.Basic,
-    ),
+    capabilities = ASSUMED_CHAT_CAPABILITIES,
     contextLength = 262_144,
     maxOutputTokens = 262_144,
 )
@@ -104,90 +116,163 @@ data class ProviderCredentials(
 )
 
 /**
- * Resolves a Koog [PromptExecutor]/[LLModel] pair for [providerId] and binds
- * it, plus [ecmTools]' read-only tool registry, into a [ChatAgent]. This is
- * the only place a real, network-calling [PromptExecutor] gets constructed
- * (KTD6) - [ChatAgent] itself takes one as a plain constructor parameter, so
- * a test double stands in without touching this class.
+ * Resolves a Koog [PromptExecutor]/[LLModel] pair for a conversation and
+ * binds it, plus [EcmTools]' read-only tool registry, into a [ChatAgent] -
+ * plus [listModels], the live "what can I actually pick" query behind the
+ * new-conversation model picker (R21). This is the only place a real,
+ * network-calling [PromptExecutor]/[LLMClient] gets constructed (KTD6) -
+ * [ChatAgent] itself takes a [PromptExecutor] as a plain constructor
+ * parameter, so a test double stands in without touching this class.
  */
 class ChatAgentFactory {
 
     fun create(
         providerId: ProviderId,
         credentials: ProviderCredentials,
+        modelId: String?,
         ecmTools: EcmTools,
         onToolCallStarting: (String) -> Unit = {},
     ): ChatAgent {
-        val (executor, model) = resolveExecutorAndModel(providerId, credentials)
+        val client = buildClient(providerId, credentials)
         return ChatAgent(
-            promptExecutor = executor,
-            llmModel = model,
+            promptExecutor = MultiLLMPromptExecutor(client),
+            llmModel = resolveModel(providerId, modelId),
             toolRegistry = ecmToolRegistry(ecmTools),
             systemPrompt = SystemPrompt.CONTENT,
             onToolCallStarting = onToolCallStarting,
         )
     }
 
-    private fun resolveExecutorAndModel(
-        providerId: ProviderId,
-        credentials: ProviderCredentials,
-    ): Pair<PromptExecutor, LLModel> = when (providerId) {
+    /**
+     * Queries [providerId]'s live model list (R21) - a real network call,
+     * run this off the main thread - so the new-conversation picker can
+     * offer exactly what that account/server currently has, rather than
+     * one fixed per-provider choice. Filtered to models Koog's own static
+     * catalog ([AnthropicModels] etc., via [modelsById]) marks as
+     * tool-calling capable, or models absent from that catalog entirely
+     * (Kimi - Koog has none at all; a custom OpenAI-compatible base URL,
+     * whose ids won't match OpenAI's own catalog; or an Ollama model a
+     * rider has pulled locally) - capability info for those genuinely
+     * isn't knowable without a real chat turn, so they're included rather
+     * than hidden. [resolveModel] makes the identical assumption explicit
+     * again at chat-creation time via [assumedCapableModel], so a model
+     * this method offered is always actually usable.
+     *
+     * Ollama's [LLMClient] (unlike every other provider here) does not
+     * override Koog's `models()` - [OllamaClient.getModels] is the real
+     * equivalent, called directly instead.
+     */
+    suspend fun listModels(providerId: ProviderId, credentials: ProviderCredentials): List<LLModel> {
+        val client = buildClient(providerId, credentials)
+        val models = if (client is OllamaClient) {
+            client.getModels().map { card -> LLModel(provider = LLMProvider.Ollama, id = card.name) }
+        } else {
+            client.models()
+        }
+        return models
+            .filter { it.capabilities == null || it.supports(LLMCapability.Tools) }
+            .sortedBy { it.id }
+    }
+
+    /**
+     * `modelId` blank/`"default"` covers every conversation persisted
+     * before R21 (the literal string [ChatFragment] used to always write)
+     * - falls back to the same fixed-per-provider model this class always
+     * used, so old conversations keep working unchanged. A real, rider-picked
+     * id is looked up in Koog's static catalog first (rich capabilities,
+     * context length, etc. from [AnthropicModels]/[OpenAIModels]/etc.);
+     * absent from it, [assumedCapableModel] builds a bare [LLModel] instead
+     * - never a hard failure, since [listModels] already only offered ids
+     * it had reason to believe were usable.
+     *
+     * `internal` (not `private`) purely so [TestChatAgentFactory] can
+     * exercise this pure, network-free selection logic directly - the
+     * single most important correctness property this method has
+     * ([EcmTools] silently breaking for a rider-picked, uncatalogued model
+     * id is a real regression risk), and it's the one part of R21 no
+     * live-provider smoke test in this sandbox can observe without a real
+     * API key/network.
+     */
+    internal fun resolveModel(providerId: ProviderId, modelId: String?): LLModel {
+        if (modelId.isNullOrBlank() || modelId == "default") {
+            return defaultModel(providerId)
+        }
+        return catalogedModel(providerId, modelId) ?: assumedCapableModel(providerId, modelId)
+    }
+
+    private fun defaultModel(providerId: ProviderId): LLModel = when (providerId) {
+        ProviderId.ANTHROPIC -> AnthropicModels.Opus_4_1
+        ProviderId.OPENAI -> OpenAIModels.Chat.GPT4o
+        ProviderId.GOOGLE -> GoogleModels.Gemini2_5Pro
+        ProviderId.DEEPSEEK -> DeepSeekModels.DeepSeekV4Flash
+        ProviderId.OPENROUTER -> OpenRouterModels.GPT4o
+        ProviderId.OLLAMA -> OllamaModels.Meta.LLAMA_3_2
+        ProviderId.KIMI -> KIMI_DEFAULT_MODEL
+    }
+
+    private fun catalogedModel(providerId: ProviderId, modelId: String): LLModel? = when (providerId) {
+        ProviderId.ANTHROPIC -> AnthropicModels.modelsById()[modelId]
+        ProviderId.OPENAI -> OpenAIModels.modelsById()[modelId]
+        ProviderId.GOOGLE -> GoogleModels.modelsById()[modelId]
+        ProviderId.DEEPSEEK -> DeepSeekModels.modelsById()[modelId]
+        ProviderId.OPENROUTER -> OpenRouterModels.modelsById()[modelId]
+        ProviderId.OLLAMA -> OllamaModels.modelsById()[modelId]
+        ProviderId.KIMI -> null // Koog has no Kimi/Moonshot catalog at all (see KIMI_DEFAULT_MODEL's KDoc)
+    }
+
+    internal fun assumedCapableModel(providerId: ProviderId, modelId: String): LLModel =
+        LLModel(provider = llmProviderFor(providerId), id = modelId, capabilities = ASSUMED_CHAT_CAPABILITIES)
+
+    private fun llmProviderFor(providerId: ProviderId): LLMProvider = when (providerId) {
+        ProviderId.ANTHROPIC -> LLMProvider.Anthropic
+        ProviderId.OPENAI -> LLMProvider.OpenAI
+        ProviderId.GOOGLE -> LLMProvider.Google
+        ProviderId.DEEPSEEK -> LLMProvider.DeepSeek
+        ProviderId.OPENROUTER -> LLMProvider.OpenRouter
+        ProviderId.OLLAMA -> LLMProvider.Ollama
+        ProviderId.KIMI -> LLMProvider.OpenAI // matches KIMI_DEFAULT_MODEL's own provider tag - Moonshot speaks the OpenAI wire protocol
+    }
+
+    private fun buildClient(providerId: ProviderId, credentials: ProviderCredentials): LLMClient = when (providerId) {
         ProviderId.ANTHROPIC -> {
             val apiKey = requireApiKey(providerId, credentials)
-            MultiLLMPromptExecutor(
-                AnthropicLLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory),
-            ) to AnthropicModels.Opus_4_1
+            AnthropicLLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory)
         }
         ProviderId.OPENAI -> {
             val apiKey = requireApiKey(providerId, credentials)
             val settings = credentials.baseUrl?.takeIf { it.isNotBlank() }
                 ?.let { OpenAIClientSettings(baseUrl = it) }
                 ?: OpenAIClientSettings()
-            MultiLLMPromptExecutor(
-                OpenAILLMClient(apiKey = apiKey, settings = settings, httpClientFactory = koogHttpClientFactory),
-            ) to OpenAIModels.Chat.GPT4o
+            OpenAILLMClient(apiKey = apiKey, settings = settings, httpClientFactory = koogHttpClientFactory)
         }
         ProviderId.GOOGLE -> {
             val apiKey = requireApiKey(providerId, credentials)
-            MultiLLMPromptExecutor(
-                GoogleLLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory),
-            ) to GoogleModels.Gemini2_5Pro
+            GoogleLLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory)
         }
         ProviderId.DEEPSEEK -> {
             val apiKey = requireApiKey(providerId, credentials)
-            MultiLLMPromptExecutor(
-                DeepSeekLLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory),
-            ) to DeepSeekModels.DeepSeekV4Flash
+            DeepSeekLLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory)
         }
         ProviderId.OPENROUTER -> {
             val apiKey = requireApiKey(providerId, credentials)
-            MultiLLMPromptExecutor(
-                OpenRouterLLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory),
-            ) to OpenRouterModels.GPT4o
+            OpenRouterLLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory)
         }
         ProviderId.OLLAMA -> {
             val baseUrl = credentials.baseUrl?.takeIf { it.isNotBlank() }
                 ?: throw IllegalArgumentException("Ollama requires a base URL.")
-            MultiLLMPromptExecutor(
-                OllamaClient(httpClientFactory = koogHttpClientFactory, baseUrl = baseUrl),
-            ) to OllamaModels.Meta.LLAMA_3_2
+            OllamaClient(httpClientFactory = koogHttpClientFactory, baseUrl = baseUrl)
         }
         ProviderId.KIMI -> {
             // Moonshot's own platform speaks the OpenAI chat-completions
             // protocol (confirmed against platform.kimi.ai's docs), so the
-            // OpenAI client works unmodified pointed at its base URL - Koog
-            // has no first-class Kimi client/model catalog, hence the
-            // hand-built LLModel below (LLMProvider.OpenAI is the correct
-            // capability/request-shaping profile, not a mislabel).
+            // OpenAI client works unmodified pointed at its base URL.
             val apiKey = requireApiKey(providerId, credentials)
             val baseUrl = credentials.baseUrl?.takeIf { it.isNotBlank() } ?: KIMI_DEFAULT_BASE_URL
-            MultiLLMPromptExecutor(
-                OpenAILLMClient(
-                    apiKey = apiKey,
-                    settings = OpenAIClientSettings(baseUrl = baseUrl),
-                    httpClientFactory = koogHttpClientFactory,
-                ),
-            ) to KIMI_K2_MODEL
+            OpenAILLMClient(
+                apiKey = apiKey,
+                settings = OpenAIClientSettings(baseUrl = baseUrl),
+                httpClientFactory = koogHttpClientFactory,
+            )
         }
     }
 

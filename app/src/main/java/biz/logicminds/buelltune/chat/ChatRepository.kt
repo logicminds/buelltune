@@ -18,6 +18,7 @@
 package biz.logicminds.buelltune.chat
 
 import ai.koog.agents.core.agent.exception.AIAgentMaxNumberOfIterationsReachedException
+import ai.koog.prompt.llm.LLModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -68,12 +69,16 @@ fun ChatAgent.asChatSender(): ChatSender = ChatSender { text, priorTurns -> send
  */
 class ChatRepository(
     private val database: ChatDatabase,
-    private val bindAgent: (ProviderId, ProviderCredentials, EcmTools, (String) -> Unit) -> ChatSender,
+    private val queryModels: suspend (ProviderId, ProviderCredentials) -> List<LLModel> = { providerId, _ ->
+        throw UnsupportedOperationException("No ChatAgentFactory bound - listModels needs the production ChatRepository(database, chatAgentFactory) constructor (queried for $providerId).")
+    },
+    private val bindAgent: (ProviderId, ProviderCredentials, String, EcmTools, (String) -> Unit) -> ChatSender,
 ) {
     constructor(database: ChatDatabase, chatAgentFactory: ChatAgentFactory) : this(
         database,
-        { providerId, credentials, ecmTools, onToolCallStarting ->
-            chatAgentFactory.create(providerId, credentials, ecmTools, onToolCallStarting).asChatSender()
+        { providerId, credentials -> chatAgentFactory.listModels(providerId, credentials) },
+        { providerId, credentials, modelId, ecmTools, onToolCallStarting ->
+            chatAgentFactory.create(providerId, credentials, modelId, ecmTools, onToolCallStarting).asChatSender()
         },
     )
 
@@ -193,11 +198,21 @@ class ChatRepository(
         )
     }
 
+    /**
+     * Live "what can I actually pick" query for the new-conversation model
+     * picker (R21) - a real network call to [providerId] using
+     * [credentials], never cached, so it reflects whatever the account
+     * actually has access to right now. See [ChatAgentFactory.listModels]
+     * for the filtering/fallback rules.
+     */
+    suspend fun listModels(providerId: ProviderId, credentials: ProviderCredentials): List<LLModel> =
+        queryModels(providerId, credentials)
+
     private suspend fun resolveAgent(conversationId: Long, ecmTools: EcmTools, credentials: ProviderCredentials): ChatSender {
         val conversation = database.conversationDao().observeAll().first()
             .firstOrNull { it.id == conversationId }
             ?: error("Unknown conversation $conversationId")
-        return bindAgent(ProviderId.valueOf(conversation.providerId), credentials, ecmTools) { toolName ->
+        return bindAgent(ProviderId.valueOf(conversation.providerId), credentials, conversation.modelId, ecmTools) { toolName ->
             toolCallEventsMutable.tryEmit(toolName)
         }
     }

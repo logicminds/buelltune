@@ -17,6 +17,8 @@
  */
 package biz.logicminds.buelltune.chat
 
+import ai.koog.prompt.llm.LLModel
+import ai.koog.prompt.llm.LLMProvider
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -75,7 +77,7 @@ class TestChatRepository {
     @Test
     fun resumedConversation_repliesOmitPriorToolCallsFromModelContext() = runBlocking {
         val capturedPriorTurns = mutableListOf<List<ConversationTurn>>()
-        val repository = ChatRepository(database) { _, _, _, _ ->
+        val repository = ChatRepository(database) { _, _, _, _, _ ->
             ChatSender { _, priorTurns ->
                 capturedPriorTurns.add(priorTurns)
                 ChatAgentResult(displayText = "Reply", suggestion = null, toolsCalled = emptyList())
@@ -131,7 +133,7 @@ class TestChatRepository {
 
     @Test
     fun newConversation_persistsProviderAndModelImmutablyAtCreation() = runBlocking {
-        val repository = ChatRepository(database) { _, _, _, _ ->
+        val repository = ChatRepository(database) { _, _, _, _, _ ->
             ChatSender { _, _ -> ChatAgentResult(displayText = "unused", suggestion = null, toolsCalled = emptyList()) }
         }
 
@@ -156,8 +158,33 @@ class TestChatRepository {
     }
 
     @Test
+    fun listModels_delegatesToTheInjectedQueryModelsFunctionWithTheSameArguments() = runBlocking {
+        var capturedProviderId: ProviderId? = null
+        var capturedCredentials: ProviderCredentials? = null
+        val fakeModels = listOf(
+            LLModel(provider = LLMProvider.Anthropic, id = "fake-model-a"),
+            LLModel(provider = LLMProvider.Anthropic, id = "fake-model-b"),
+        )
+        val repository = ChatRepository(
+            database = database,
+            queryModels = { providerId, credentials ->
+                capturedProviderId = providerId
+                capturedCredentials = credentials
+                fakeModels
+            },
+            bindAgent = { _, _, _, _, _ -> ChatSender { _, _ -> ChatAgentResult(displayText = "unused", suggestion = null, toolsCalled = emptyList()) } },
+        )
+
+        val result = repository.listModels(ProviderId.ANTHROPIC, ProviderCredentials(apiKey = "test-key"))
+
+        assertEquals(fakeModels, result)
+        assertEquals(ProviderId.ANTHROPIC, capturedProviderId)
+        assertEquals(ProviderCredentials(apiKey = "test-key"), capturedCredentials)
+    }
+
+    @Test
     fun deletingConversation_removesItsMessages() = runBlocking {
-        val repository = ChatRepository(database) { _, _, _, _ ->
+        val repository = ChatRepository(database) { _, _, _, _, _ ->
             ChatSender { _, _ -> ChatAgentResult(displayText = "Reply", suggestion = null, toolsCalled = listOf("read_live_data")) }
         }
 

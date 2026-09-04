@@ -229,7 +229,7 @@ class ChatFragment : Fragment() {
 
     // --- New conversation (R10, R15) ---
 
-    private fun showNewConversationPicker(onProviderChosen: (ProviderId) -> Unit = { createConversation(it) }) {
+    private fun showNewConversationPicker(onSelected: (ProviderId, String) -> Unit = ::createConversation) {
         val providers = AppPreferences.configuredProviders(requireContext())
         if (providers.isEmpty()) {
             Toast.makeText(requireContext(), R.string.chat_no_providers_configured, Toast.LENGTH_LONG).show()
@@ -238,27 +238,65 @@ class ChatFragment : Fragment() {
         val labels = providers.map { it.name }.toTypedArray()
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.chat_choose_provider_title)
-            .setItems(labels) { _, index -> onProviderChosen(providers[index]) }
+            .setItems(labels) { _, index -> pickModelThen(providers[index], onSelected) }
             .show()
     }
 
-    private fun createConversation(providerId: ProviderId) {
+    /**
+     * Queries [providerId]'s live model list (R21, a real network call via
+     * [ChatRepository.listModels]) and lets the rider pick one; matches
+     * [showNewConversationPicker]'s "skip the dialog when there's no real
+     * choice" rule by auto-selecting when the query returns exactly one
+     * candidate. A failure (offline, a since-revoked key, a provider
+     * outage) or an empty result surfaces as a Toast and aborts -
+     * conversation creation never silently falls back to a guessed model.
+     */
+    private fun pickModelThen(providerId: ProviderId, onSelected: (ProviderId, String) -> Unit) {
+        val credentials = AppPreferences.credentialsFor(requireContext(), providerId)
+        val progress = AlertDialog.Builder(requireContext())
+            .setTitle(R.string.chat_loading_models_title)
+            .setCancelable(false)
+            .show()
         viewLifecycleOwner.lifecycleScope.launch {
-            showConversation(createConversationEntity(providerId))
+            val models = try {
+                chatRepository.listModels(providerId, credentials)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to list models for $providerId", e)
+                emptyList()
+            }
+            progress.dismiss()
+            when {
+                models.isEmpty() -> Toast.makeText(
+                    requireContext(),
+                    getString(R.string.chat_no_models_found, providerId.name),
+                    Toast.LENGTH_LONG,
+                ).show()
+                models.size == 1 -> onSelected(providerId, models.single().id)
+                else -> {
+                    val labels = models.map { it.id }.toTypedArray()
+                    AlertDialog.Builder(requireContext())
+                        .setTitle(R.string.chat_choose_model_title)
+                        .setItems(labels) { _, index -> onSelected(providerId, models[index].id) }
+                        .show()
+                }
+            }
         }
     }
 
-    /**
-     * "default" is the persisted modelId column (KD5) - ChatAgentFactory
-     * resolves the real Koog LLModel from providerId/credentials alone
-     * today, so no richer value is actually read back out of this column.
-     */
-    private suspend fun createConversationEntity(providerId: ProviderId): ConversationEntity {
+    private fun createConversation(providerId: ProviderId, modelId: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            showConversation(createConversationEntity(providerId, modelId))
+        }
+    }
+
+    private suspend fun createConversationEntity(providerId: ProviderId, modelId: String): ConversationEntity {
         val title = getString(
             R.string.chat_default_conversation_title,
             DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date()),
         )
-        val conversationId = chatRepository.createConversation(providerId, "default", title)
+        val conversationId = chatRepository.createConversation(providerId, modelId, title)
         return chatRepository.conversations.first().first { it.id == conversationId }
     }
 
@@ -324,25 +362,33 @@ class ChatFragment : Fragment() {
     }
 
     /**
-     * Tapping a chip both picks a provider and starts a brand-new
-     * conversation (R20) - unlike [newConversationButton]'s picker (R10),
-     * which always lets the rider confirm/choose, a chip is a one-tap
-     * shortcut: with exactly one provider configured it is used directly,
-     * only falling back to [showNewConversationPicker]'s AlertDialog when
-     * there is a real choice to make.
+     * Tapping a chip picks a provider, then a model, and starts a
+     * brand-new conversation (R20) - unlike [newConversationButton]'s
+     * picker (R10), which always lets the rider confirm/choose the
+     * provider, a chip is a one-tap shortcut for that first step only:
+     * with exactly one provider configured it is used directly, only
+     * falling back to [showNewConversationPicker]'s AlertDialog when
+     * there is a real provider choice to make. [pickModelThen] (R21) is
+     * never skipped on this path - only auto-resolved when the queried
+     * provider itself has just one usable model.
      */
     private fun startConversationFromChip(templateText: String) {
         val providers = AppPreferences.configuredProviders(requireContext())
+        if (providers.isEmpty()) {
+            Toast.makeText(requireContext(), R.string.chat_no_providers_configured, Toast.LENGTH_LONG).show()
+            return
+        }
+        val onSelected: (ProviderId, String) -> Unit = { providerId, modelId -> createConversationAndSend(providerId, modelId, templateText) }
         if (providers.size == 1) {
-            createConversationAndSend(providers.first(), templateText)
+            pickModelThen(providers.first(), onSelected)
         } else {
-            showNewConversationPicker { providerId -> createConversationAndSend(providerId, templateText) }
+            showNewConversationPicker(onSelected)
         }
     }
 
-    private fun createConversationAndSend(providerId: ProviderId, text: String) {
+    private fun createConversationAndSend(providerId: ProviderId, modelId: String, text: String) {
         viewLifecycleOwner.lifecycleScope.launch {
-            val conversation = createConversationEntity(providerId)
+            val conversation = createConversationEntity(providerId, modelId)
             showConversation(conversation)
             sendText(conversation, text)
         }
@@ -444,7 +490,11 @@ class ChatFragment : Fragment() {
 
             fun bind(conversation: ConversationEntity, onOpen: (ConversationEntity) -> Unit, onDelete: (ConversationEntity) -> Unit) {
                 title.text = conversation.title
-                subtitle.text = conversation.providerId
+                subtitle.text = if (conversation.modelId.isBlank() || conversation.modelId == "default") {
+                    conversation.providerId
+                } else {
+                    "${conversation.providerId} \u00b7 ${conversation.modelId}"
+                }
                 itemView.setOnClickListener { onOpen(conversation) }
                 delete.setOnClickListener { onDelete(conversation) }
             }
