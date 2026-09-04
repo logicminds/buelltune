@@ -44,7 +44,26 @@ data class ChatAgentResult(
     val toolsCalled: List<String>,
 )
 
-private const val MAX_AGENT_ITERATIONS = 5
+/**
+ * Real device budget for the plan's "cap at 5 tool iterations per turn"
+ * (R12), not a literal `maxAgentIterations` value - Koog's
+ * `AIAgentSubgraphBase`/`AIAgentPlanner` count every graph-node traversal
+ * against this ceiling (`state.iterations`, incremented once per node:
+ * the LLM call producing a tool_use, the tool-execution node, the
+ * follow-up LLM call consuming the tool_result, ...), not distinct tool
+ * names invoked. Confirmed the hard way: `maxAgentIterations = 5`
+ * (matching the plan's number literally) threw
+ * `AIAgentMaxNumberOfIterationsReachedException` on a real device against
+ * a real Kimi Code call for the simplest possible single-tool question
+ * ("what's my RPM?") - one real tool round-trip alone already exceeds 5
+ * graph steps. Koog's own default is 50 (`AIAgentBuilderBase`,
+ * `AIAgentServiceBuilderBase`), and its test suite commonly budgets 10 for
+ * trivial single-tool scenarios - 5 was never enough headroom for this
+ * class's graph, regardless of provider. 20 gives ~5 real tool
+ * round-trips (each costing several graph steps) plus a final synthesis
+ * step, matching the plan's actual intent rather than its literal number.
+ */
+private const val MAX_AGENT_ITERATIONS = 20
 
 /**
  * Drives one turn of the capped, timed-out, tool-calling agentic loop (R12)

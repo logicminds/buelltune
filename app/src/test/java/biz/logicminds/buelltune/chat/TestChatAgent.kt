@@ -241,20 +241,20 @@ class TestChatAgent {
         Message.Assistant(text, ResponseMetaInfo.Empty, null, null, id)
 
     @Test
-    fun agent_capsAtFiveToolIterations_returnsPartialAnswerNotInfiniteLoop() = runBlocking {
-        // Six consecutive tool-call responses, no final text answer ever
+    fun agent_capsAtTwentyToolIterations_returnsPartialAnswerNotInfiniteLoop() = runBlocking {
+        // Thirty consecutive tool-call responses, no final text answer ever
         // offered - if the loop had no cap, this would run forever.
-        val script = MutableList(6) { i -> toolCallResponse("call-$i", "get_ecm_info", buildJsonObject {}) }
+        val script = MutableList(30) { i -> toolCallResponse("call-$i", "get_ecm_info", buildJsonObject {}) }
         val executor = ScriptedPromptExecutor(script)
         val agent = newChatAgent(executor, newConnectedTools())
 
-        // Koog's own maxAgentIterations=5 enforcement (ChatAgent.kt's
+        // Koog's own maxAgentIterations=20 enforcement (ChatAgent.kt's
         // MAX_AGENT_ITERATIONS) throws AIAgentMaxNumberOfIterationsReachedException
         // rather than silently returning a partial answer - proven by
         // decompiling agents-core: AIAgentSubgraphBase's inner-context loop
         // throws it directly, and nothing in agents-core catches it. The
         // real assertion of "not an infinite loop" is that this call
-        // returns (by throwing) at all, and stops well before the 6th
+        // returns (by throwing) at all, and stops well before the 30th
         // scripted response is ever consumed.
         val ex = assertThrows(
             AIAgentMaxNumberOfIterationsReachedException::class.java,
@@ -262,12 +262,12 @@ class TestChatAgent {
             runBlocking { agent.send("Tell me everything about the ECM.", emptyList()) }
         }
         assertTrue(
-            "expected the exception to report the real 5-iteration cap, got: ${ex.message}",
-            ex.message?.contains("5") == true,
+            "expected the exception to report the real 20-iteration cap, got: ${ex.message}",
+            ex.message?.contains("20") == true,
         )
         assertTrue(
-            "expected the loop to stop before exhausting all 6 scripted responses (bounded, not infinite)",
-            executor.promptsSeen.size <= 6,
+            "expected the loop to stop before exhausting all 30 scripted responses (bounded, not infinite)",
+            executor.promptsSeen.size <= 30,
         )
     }
 
