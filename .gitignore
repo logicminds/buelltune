@@ -13,3 +13,10 @@
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+# graphify (docs/superpowers say commit graphify-out/ so the team shares one
+# graph; these three are machine-local / regenerated on demand)
+graphify-out/cost.json
+graphify-out/.graphify_python
+graphify-out/.graphify_root
+graphify-out/cache/

@@ -1,0 +1,866 @@
+{
+  ".beads/hooks/post-checkout": {
+    "mtime": 1788490659.2560587,
+    "seen": 1788494183.1670558,
+    "ast_hash": "ec9f973effebba888ad292cab6dcc2d0",
+    "semantic_hash": "ec9f973effebba888ad292cab6dcc2d0"
+  },
+  ".beads/hooks/post-merge": {
+    "mtime": 1788490659.2561183,
+    "seen": 1788494183.167058,
+    "ast_hash": "47d05d345c7d6c602d32524f65fc2a86",
+    "semantic_hash": "47d05d345c7d6c602d32524f65fc2a86"
+  },
+  ".beads/hooks/pre-commit": {
+    "mtime": 1788490659.2562516,
+    "seen": 1788494183.16706,
+    "ast_hash": "4b31cb204e7954d42a9ecb9020ff52f7",
+    "semantic_hash": "4b31cb204e7954d42a9ecb9020ff52f7"
+  },
+  ".beads/hooks/pre-push": {
+    "mtime": 1788490659.256412,
+    "seen": 1788494183.16706,
+    "ast_hash": "83bea7ceffad7369d390fcf3a6347d63",
+    "semantic_hash": "83bea7ceffad7369d390fcf3a6347d63"
+  },
+  ".beads/hooks/prepare-commit-msg": {
+    "mtime": 1788490659.2565465,
+    "seen": 1788494183.167061,
+    "ast_hash": "f9acf190971bc9e990db2f67c5270599",
+    "semantic_hash": "f9acf190971bc9e990db2f67c5270599"
+  },
+  ".beads/metadata.json": {
+    "mtime": 1788490659.257742,
+    "seen": 1788494183.167061,
+    "ast_hash": "98d7d015b5727290125aff2301be1b18",
+    "semantic_hash": "98d7d015b5727290125aff2301be1b18"
+  },
+  ".claude/settings.json": {
+    "mtime": 1788490659.2578416,
+    "seen": 1788494183.167061,
+    "ast_hash": "408623853c987db7ac558792eeaec276",
+    "semantic_hash": "408623853c987db7ac558792eeaec276"
+  },
+  ".codex/hooks.json": {
+    "mtime": 1788490659.2586174,
+    "seen": 1788494183.167062,
+    "ast_hash": "6ab111cb0ebd91918bed9fa0805d8a31",
+    "semantic_hash": "6ab111cb0ebd91918bed9fa0805d8a31"
+  },
+  "app/build.gradle.kts": {
+    "mtime": 1788490659.2618775,
+    "seen": 1788494183.167062,
+    "ast_hash": "abe96e9f966eeb5568c0dab2c2d3784f",
+    "semantic_hash": "abe96e9f966eeb5568c0dab2c2d3784f"
+  },
+  "app/src/androidTest/java/biz/logicminds/buelltune/ManifestComplianceInstrumentedTest.java": {
+    "mtime": 1788490659.2633288,
+    "seen": 1788494183.167062,
+    "ast_hash": "823cd0ad23a6f17dfb989d76f7ccbbab",
+    "semantic_hash": "823cd0ad23a6f17dfb989d76f7ccbbab"
+  },
+  "app/src/androidTest/java/biz/logicminds/buelltune/TestBitSetProvider.java": {
+    "mtime": 1788490659.2636516,
+    "seen": 1788494183.167063,
+    "ast_hash": "5151fd1fff7e3f688245a6d1e0101ffc",
+    "semantic_hash": "5151fd1fff7e3f688245a6d1e0101ffc"
+  },
+  "app/src/androidTest/java/biz/logicminds/buelltune/TestECM.java": {
+    "mtime": 1788490659.2638566,
+    "seen": 1788494183.167063,
+    "ast_hash": "6dc505ddc0190a522142c59db1c4df59",
+    "semantic_hash": "6dc505ddc0190a522142c59db1c4df59"
+  },
+  "app/src/androidTest/java/biz/logicminds/buelltune/TestEEPROM.java": {
+    "mtime": 1788490659.264057,
+    "seen": 1788494183.167064,
+    "ast_hash": "9f7ca1d6b1de33e1b4847fe4ceb14e51",
+    "semantic_hash": "9f7ca1d6b1de33e1b4847fe4ceb14e51"
+  },
+  "app/src/androidTest/java/biz/logicminds/buelltune/TestEcmDefinitionsDatabase.kt": {
+    "mtime": 1788490659.2641206,
+    "seen": 1788494183.167064,
+    "ast_hash": "fa4e23fcd664e5bf0d9b1420f05cfeb4",
+    "semantic_hash": "fa4e23fcd664e5bf0d9b1420f05cfeb4"
+  },
+  "app/src/androidTest/java/biz/logicminds/buelltune/TestVariableProvider.java": {
+    "mtime": 1788490659.2644253,
+    "seen": 1788494183.167064,
+    "ast_hash": "e9b7fc1c7a66fe6501faab0fc915ec94",
+    "semantic_hash": "e9b7fc1c7a66fe6501faab0fc915ec94"
+  },
+  "app/src/androidTest/java/biz/logicminds/buelltune/activities/MainActivityBluetoothPermissionInstrumentedTest.kt": {
+    "mtime": 1788490659.2647998,
+    "seen": 1788494183.1670651,
+    "ast_hash": "e0350c03c6dd9da5ba65da5ffb5d7a0b",
+    "semantic_hash": "e0350c03c6dd9da5ba65da5ffb5d7a0b"
+  },
+  "app/src/androidTest/java/biz/logicminds/buelltune/fragments/EEPROMFragmentSafInstrumentedTest.kt": {
+    "mtime": 1788490659.264929,
+    "seen": 1788494183.1670651,
+    "ast_hash": "b0daa50f037a3054397d71f99d9d5c6a",
+    "semantic_hash": "b0daa50f037a3054397d71f99d9d5c6a"
+  },
+  "app/src/androidTest/java/biz/logicminds/buelltune/fragments/FixtureDocumentProvider.java": {
+    "mtime": 1788490659.2650955,
+    "seen": 1788494183.1670651,
+    "ast_hash": "6e815b5094d97ef823d90e9d641910d9",
+    "semantic_hash": "6e815b5094d97ef823d90e9d641910d9"
+  },
+  "app/src/androidTest/java/biz/logicminds/buelltune/service/EcmServiceBroadcastInstrumentedTest.kt": {
+    "mtime": 1788490659.2655613,
+    "seen": 1788494183.167066,
+    "ast_hash": "e542b9a38ff8e3b6db0dffc849cc673b",
+    "semantic_hash": "e542b9a38ff8e3b6db0dffc849cc673b"
+  },
+  "app/src/androidTest/java/biz/logicminds/buelltune/service/LegacyFragmentBridgeInstrumentedTest.kt": {
+    "mtime": 1788490659.2657566,
+    "seen": 1788494183.167066,
+    "ast_hash": "2eb9a01954b243721893c179970b6ffd",
+    "semantic_hash": "2eb9a01954b243721893c179970b6ffd"
+  },
+  "app/src/androidTest/java/biz/logicminds/buelltune/ui/ConnectionStatusScreenTest.kt": {
+    "mtime": 1788490659.2660892,
+    "seen": 1788494183.167066,
+    "ast_hash": "2ac2e39103b23e8fe41b166d0f6b03cb",
+    "semantic_hash": "2ac2e39103b23e8fe41b166d0f6b03cb"
+  },
+  "app/src/debug/java/biz/logicminds/buelltune/ui/BuellTuneDebugActivity.kt": {
+    "mtime": 1788490659.2717187,
+    "seen": 1788494183.1670668,
+    "ast_hash": "5f0807f1e417ca8d647232c43743ae6f",
+    "semantic_hash": "5f0807f1e417ca8d647232c43743ae6f"
+  },
+  "app/src/debug/java/biz/logicminds/buelltune/ui/BuellTuneNavHost.kt": {
+    "mtime": 1788490659.2719996,
+    "seen": 1788494183.1670668,
+    "ast_hash": "9b05ad3e3b228c2dc549dae13a86c0fa",
+    "semantic_hash": "9b05ad3e3b228c2dc549dae13a86c0fa"
+  },
+  "app/src/debug/java/biz/logicminds/buelltune/ui/BuellTuneTheme.kt": {
+    "mtime": 1788490659.2723563,
+    "seen": 1788494183.167068,
+    "ast_hash": "379dab0d3a394788cd42bd1b809a7b82",
+    "semantic_hash": "379dab0d3a394788cd42bd1b809a7b82"
+  },
+  "app/src/debug/java/biz/logicminds/buelltune/ui/ConnectionStatusScreen.kt": {
+    "mtime": 1788490659.272471,
+    "seen": 1788494183.167068,
+    "ast_hash": "e53eb0417aeda3726f3b0a5048a689b5",
+    "semantic_hash": "e53eb0417aeda3726f3b0a5048a689b5"
+  },
+  "app/src/debug/java/biz/logicminds/buelltune/ui/ConnectionStatusViewModel.kt": {
+    "mtime": 1788490659.2725368,
+    "seen": 1788494183.167068,
+    "ast_hash": "b9592f1d9fadb647963e021009fb7706",
+    "semantic_hash": "b9592f1d9fadb647963e021009fb7706"
+  },
+  "app/src/debug/java/biz/logicminds/buelltune/ui/EcmLiveDataSource.kt": {
+    "mtime": 1788490659.2726173,
+    "seen": 1788494183.167069,
+    "ast_hash": "f67944e0fbe0900bb46cc9f0d3b28be7",
+    "semantic_hash": "f67944e0fbe0900bb46cc9f0d3b28be7"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/AppContainer.kt": {
+    "mtime": 1788490659.2744002,
+    "seen": 1788494183.167069,
+    "ast_hash": "098ac169193181b8d633384ed72d031a",
+    "semantic_hash": "098ac169193181b8d633384ed72d031a"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/AppPreferences.kt": {
+    "mtime": 1788490659.2746856,
+    "seen": 1788494183.167069,
+    "ast_hash": "182b9c634a95b859fee61644c7d1ff10",
+    "semantic_hash": "182b9c634a95b859fee61644c7d1ff10"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/Bit.kt": {
+    "mtime": 1788490659.2748802,
+    "seen": 1788494183.16707,
+    "ast_hash": "da829207c017e593e45905f9621b5f46",
+    "semantic_hash": "da829207c017e593e45905f9621b5f46"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/BitSet.kt": {
+    "mtime": 1788490659.2751346,
+    "seen": 1788494183.16707,
+    "ast_hash": "dbe13938e98059e4f83fae578a13d998",
+    "semantic_hash": "dbe13938e98059e4f83fae578a13d998"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/BitSetProvider.kt": {
+    "mtime": 1788490659.275344,
+    "seen": 1788494183.16707,
+    "ast_hash": "89b37b3ff00a70511d254c2e97d1b013",
+    "semantic_hash": "89b37b3ff00a70511d254c2e97d1b013"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/ColorMap.kt": {
+    "mtime": 1788490659.2754254,
+    "seen": 1788494183.1670709,
+    "ast_hash": "f90af37d9f4276597cc549afd3236df4",
+    "semantic_hash": "f90af37d9f4276597cc549afd3236df4"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/Constants.kt": {
+    "mtime": 1788490659.275523,
+    "seen": 1788494183.1670709,
+    "ast_hash": "b0e0a80f61e52895464205e925f0d4a9",
+    "semantic_hash": "b0e0a80f61e52895464205e925f0d4a9"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/DataChannelAdapter.java": {
+    "mtime": 1788490659.2756321,
+    "seen": 1788494183.1670709,
+    "ast_hash": "660f0d0b114761dd84c02445df53298c",
+    "semantic_hash": "660f0d0b114761dd84c02445df53298c"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/DatabaseBitSetProvider.kt": {
+    "mtime": 1788490659.275697,
+    "seen": 1788494183.167072,
+    "ast_hash": "a0f3ad92806c1a86e31071d7f11b31d3",
+    "semantic_hash": "a0f3ad92806c1a86e31071d7f11b31d3"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/DatabaseVariableProvider.kt": {
+    "mtime": 1788490659.275769,
+    "seen": 1788494183.167072,
+    "ast_hash": "6e53e0636bcb4cf9c820157344f53e31",
+    "semantic_hash": "6e53e0636bcb4cf9c820157344f53e31"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/ECM.kt": {
+    "mtime": 1788490659.2758694,
+    "seen": 1788494183.167072,
+    "ast_hash": "b616f7d1503a6378857485920ce6564b",
+    "semantic_hash": "b616f7d1503a6378857485920ce6564b"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/EEPROM.kt": {
+    "mtime": 1788490659.276045,
+    "seen": 1788494183.167073,
+    "ast_hash": "7d5293a03d7433d77dc407d26ef70a39",
+    "semantic_hash": "7d5293a03d7433d77dc407d26ef70a39"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/EEPROMAdapter.java": {
+    "mtime": 1788490659.2761118,
+    "seen": 1788494183.167073,
+    "ast_hash": "580b07173eefe59ea2f012a42d71f15a",
+    "semantic_hash": "580b07173eefe59ea2f012a42d71f15a"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/EcmDefinitionsProvider.kt": {
+    "mtime": 1788490659.276174,
+    "seen": 1788494183.167073,
+    "ast_hash": "218e4b632658dd74e63f09e7caceaa4c",
+    "semantic_hash": "218e4b632658dd74e63f09e7caceaa4c"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/EcmDroidApp.java": {
+    "mtime": 1788490659.2762303,
+    "seen": 1788494183.167074,
+    "ast_hash": "22f5ea77cfb84af4f144f06f48d3aabe",
+    "semantic_hash": "22f5ea77cfb84af4f144f06f48d3aabe"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/Error.kt": {
+    "mtime": 1788490659.2763033,
+    "seen": 1788494183.167074,
+    "ast_hash": "8dfb7b4dc456d5d5814780be8c9fb3e5",
+    "semantic_hash": "8dfb7b4dc456d5d5814780be8c9fb3e5"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/PDU.kt": {
+    "mtime": 1788491121.819758,
+    "seen": 1788494183.1670752,
+    "ast_hash": "06404ca4ef395fe77d0e113c2f2a396f",
+    "semantic_hash": "06404ca4ef395fe77d0e113c2f2a396f"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/Units.kt": {
+    "mtime": 1788490659.2766178,
+    "seen": 1788494183.1670752,
+    "ast_hash": "0b30f7f2f17d7d88aee18f015468c1d4",
+    "semantic_hash": "0b30f7f2f17d7d88aee18f015468c1d4"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/Utils.kt": {
+    "mtime": 1788490659.2767909,
+    "seen": 1788494183.1670752,
+    "ast_hash": "b4e17986e614970e1df35f086189b1dd",
+    "semantic_hash": "b4e17986e614970e1df35f086189b1dd"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/Variable.kt": {
+    "mtime": 1788490659.276899,
+    "seen": 1788494183.167076,
+    "ast_hash": "924bdc90175a800e08a06d6d765d7075",
+    "semantic_hash": "924bdc90175a800e08a06d6d765d7075"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/VariableProvider.kt": {
+    "mtime": 1788490659.2772586,
+    "seen": 1788494183.167076,
+    "ast_hash": "49a82390d1acc1518e58286970f0de65",
+    "semantic_hash": "49a82390d1acc1518e58286970f0de65"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/activities/AboutActivity.java": {
+    "mtime": 1788490659.2775161,
+    "seen": 1788494183.167076,
+    "ast_hash": "58e58c6d5256edc75698523f79a7d5c2",
+    "semantic_hash": "58e58c6d5256edc75698523f79a7d5c2"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/activities/MainActivity.java": {
+    "mtime": 1788490659.2778888,
+    "seen": 1788494183.167077,
+    "ast_hash": "21d3243c244ae0a7ac5177b5a4b8632b",
+    "semantic_hash": "21d3243c244ae0a7ac5177b5a4b8632b"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/activities/PrefsActivity.java": {
+    "mtime": 1788490659.2781904,
+    "seen": 1788494183.167077,
+    "ast_hash": "28906e0b2631ce1d0a0c00413e3aaf5c",
+    "semantic_hash": "28906e0b2631ce1d0a0c00413e3aaf5c"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/activities/SplashActivity.java": {
+    "mtime": 1788490659.2784867,
+    "seen": 1788494183.1670778,
+    "ast_hash": "e406ea1af1b8c967988cac40b62c6230",
+    "semantic_hash": "e406ea1af1b8c967988cac40b62c6230"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/data/Daos.kt": {
+    "mtime": 1788490659.278638,
+    "seen": 1788494183.1670778,
+    "ast_hash": "4b0d5e78e6378590c2aad338a5c21e81",
+    "semantic_hash": "4b0d5e78e6378590c2aad338a5c21e81"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/data/EcmDefinitionsDatabase.kt": {
+    "mtime": 1788490659.278727,
+    "seen": 1788494183.1670778,
+    "ast_hash": "475ad519a683f0dd1e5ef08513880f52",
+    "semantic_hash": "475ad519a683f0dd1e5ef08513880f52"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/data/Entities.kt": {
+    "mtime": 1788490659.2790067,
+    "seen": 1788494183.167079,
+    "ast_hash": "63f03ff6f88e004bd0b5422d491cba74",
+    "semantic_hash": "63f03ff6f88e004bd0b5422d491cba74"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/fragments/ActiveTestsFragment.java": {
+    "mtime": 1788490659.2793357,
+    "seen": 1788494183.167079,
+    "ast_hash": "fc4160f5661288c3c8192860647ff425",
+    "semantic_hash": "fc4160f5661288c3c8192860647ff425"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/fragments/CellEditorDialogFragment.java": {
+    "mtime": 1788490659.2795386,
+    "seen": 1788494183.167079,
+    "ast_hash": "301e5c216f9c8b185a873fdaa780e2f0",
+    "semantic_hash": "301e5c216f9c8b185a873fdaa780e2f0"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/fragments/DataChannelFragment.java": {
+    "mtime": 1788490659.2797394,
+    "seen": 1788494183.16708,
+    "ast_hash": "971d4312a684e59e5e315791d8be04eb",
+    "semantic_hash": "971d4312a684e59e5e315791d8be04eb"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/fragments/EEPROMFragment.java": {
+    "mtime": 1788490659.2800272,
+    "seen": 1788494183.16708,
+    "ast_hash": "e5aa1b830c15544b642a7601cf485e5b",
+    "semantic_hash": "e5aa1b830c15544b642a7601cf485e5b"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/fragments/LogFragment.java": {
+    "mtime": 1788490659.280266,
+    "seen": 1788494183.16708,
+    "ast_hash": "7ba60c905290555798a2595436c5110b",
+    "semantic_hash": "7ba60c905290555798a2595436c5110b"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/fragments/MainFragment.java": {
+    "mtime": 1788490659.280535,
+    "seen": 1788494183.1670809,
+    "ast_hash": "0da9c9098e1ba77477353fee139ae7f7",
+    "semantic_hash": "0da9c9098e1ba77477353fee139ae7f7"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/fragments/SetupFragment.java": {
+    "mtime": 1788490659.2807832,
+    "seen": 1788494183.1670809,
+    "ast_hash": "70e1e731af66a5e86103a37bb7ad200d",
+    "semantic_hash": "70e1e731af66a5e86103a37bb7ad200d"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/fragments/TorqueValuesFragment.java": {
+    "mtime": 1788490659.2809467,
+    "seen": 1788494183.1670809,
+    "ast_hash": "9c7a751aff09cfcb1d8ce5cf2e893f8a",
+    "semantic_hash": "9c7a751aff09cfcb1d8ce5cf2e893f8a"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/fragments/TroubleCodeFragment.java": {
+    "mtime": 1788490659.2810242,
+    "seen": 1788494183.167082,
+    "ast_hash": "0592ac90d79cf88a3ef9502bdc2326c8",
+    "semantic_hash": "0592ac90d79cf88a3ef9502bdc2326c8"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/service/EcmService.kt": {
+    "mtime": 1788490659.28134,
+    "seen": 1788494183.167082,
+    "ast_hash": "1f61b1a6ecc8fdf3c052b6963b362de7",
+    "semantic_hash": "1f61b1a6ecc8fdf3c052b6963b362de7"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/service/LegacyBroadcastBridge.kt": {
+    "mtime": 1788490659.2814076,
+    "seen": 1788494183.167082,
+    "ast_hash": "2843be37ba98e8312b3577516a770da5",
+    "semantic_hash": "2843be37ba98e8312b3577516a770da5"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/service/PollRecordLoop.kt": {
+    "mtime": 1788490659.2814841,
+    "seen": 1788494183.167083,
+    "ast_hash": "40822b547dbf2890d1a02077d3ad9dda",
+    "semantic_hash": "40822b547dbf2890d1a02077d3ad9dda"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/task/BurnTask.java": {
+    "mtime": 1788490659.2830262,
+    "seen": 1788494183.167083,
+    "ast_hash": "43445ebdad485b692aed5c31568f2ecb",
+    "semantic_hash": "43445ebdad485b692aed5c31568f2ecb"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/task/FetchTask.java": {
+    "mtime": 1788490659.2831285,
+    "seen": 1788494183.167083,
+    "ast_hash": "99cec3b0046d84e4996fc380dc9b63e2",
+    "semantic_hash": "99cec3b0046d84e4996fc380dc9b63e2"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/task/ProgressDialogTask.java": {
+    "mtime": 1788490659.2832415,
+    "seen": 1788494183.167083,
+    "ast_hash": "fe7225fd0459771d2addf30a626c73d9",
+    "semantic_hash": "fe7225fd0459771d2addf30a626c73d9"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/transport/BleTransport.kt": {
+    "mtime": 1788490659.2834573,
+    "seen": 1788494183.167084,
+    "ast_hash": "5ff34c55b035cfb44f220a2391ebddfc",
+    "semantic_hash": "5ff34c55b035cfb44f220a2391ebddfc"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/transport/BluetoothClassicTransport.kt": {
+    "mtime": 1788490659.2853677,
+    "seen": 1788494183.167084,
+    "ast_hash": "8c607b89234ac8b88c829aecdec151a7",
+    "semantic_hash": "8c607b89234ac8b88c829aecdec151a7"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/transport/ConnectionState.kt": {
+    "mtime": 1788490659.2856283,
+    "seen": 1788494183.167084,
+    "ast_hash": "a6925acb6cfaed6e7e115de319cac080",
+    "semantic_hash": "a6925acb6cfaed6e7e115de319cac080"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/transport/EcmTransport.kt": {
+    "mtime": 1788490659.2857883,
+    "seen": 1788494183.1670852,
+    "ast_hash": "da8e56e425dc3078b5d689380d1d6be1",
+    "semantic_hash": "da8e56e425dc3078b5d689380d1d6be1"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/transport/PduFraming.kt": {
+    "mtime": 1788490659.2858884,
+    "seen": 1788494183.1670852,
+    "ast_hash": "52baedf8db11fa77e916b9d2c140fe8d",
+    "semantic_hash": "52baedf8db11fa77e916b9d2c140fe8d"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/transport/PolledByteQueueInputStream.kt": {
+    "mtime": 1788490659.285979,
+    "seen": 1788494183.1670852,
+    "ast_hash": "261119337e904c40a28d0b867b4a4335",
+    "semantic_hash": "261119337e904c40a28d0b867b4a4335"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/transport/TcpTransport.kt": {
+    "mtime": 1788490659.2860785,
+    "seen": 1788494183.1670861,
+    "ast_hash": "258105ecc5cf29002518183f3ede9533",
+    "semantic_hash": "258105ecc5cf29002518183f3ede9533"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/transport/TransportFactory.kt": {
+    "mtime": 1788490659.2861557,
+    "seen": 1788494183.1670861,
+    "ast_hash": "4af37a27e061314306f232ea5f54f4ef",
+    "semantic_hash": "4af37a27e061314306f232ea5f54f4ef"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/transport/UsbSerialTransport.kt": {
+    "mtime": 1788490659.2864509,
+    "seen": 1788494183.1670861,
+    "ast_hash": "e4f378ba9049efc0c460285c7da84247",
+    "semantic_hash": "e4f378ba9049efc0c460285c7da84247"
+  },
+  "app/src/main/java/biz/logicminds/buelltune/util/Bin2MslConverter.kt": {
+    "mtime": 1788490659.2867622,
+    "seen": 1788494183.167087,
+    "ast_hash": "0a4963b4ae139eff2933bec594157dc3",
+    "semantic_hash": "0a4963b4ae139eff2933bec594157dc3"
+  },
+  "app/src/main/java/de/kai_morich/simple_bluetooth_le_terminal/DevicesFragment.java": {
+    "mtime": 1788490659.2871714,
+    "seen": 1788494183.167087,
+    "ast_hash": "2c6f7f0c846eb35a01b28b25a6a85e44",
+    "semantic_hash": "2c6f7f0c846eb35a01b28b25a6a85e44"
+  },
+  "app/src/main/java/de/kai_morich/simple_bluetooth_le_terminal/SerialListener.java": {
+    "mtime": 1788490659.2873175,
+    "seen": 1788494183.167088,
+    "ast_hash": "a8639475a4f80e4dca6f4f2df5a90394",
+    "semantic_hash": "a8639475a4f80e4dca6f4f2df5a90394"
+  },
+  "app/src/main/java/de/kai_morich/simple_bluetooth_le_terminal/SerialSocket.java": {
+    "mtime": 1788490659.287434,
+    "seen": 1788494183.167088,
+    "ast_hash": "478af3b5b6b9e7fd46d8d9d22bfb38ad",
+    "semantic_hash": "478af3b5b6b9e7fd46d8d9d22bfb38ad"
+  },
+  "app/src/sharedTest/java/biz/logicminds/buelltune/TestUtils.java": {
+    "mtime": 1788490659.2981026,
+    "seen": 1788494183.167088,
+    "ast_hash": "12d45dec87921fed4aabf8f08b4f7795",
+    "semantic_hash": "12d45dec87921fed4aabf8f08b4f7795"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/TestBin2Msl.java": {
+    "mtime": 1788490659.298358,
+    "seen": 1788494183.167089,
+    "ast_hash": "fb66b1f7e2e35239f38aa3c295e6f4f2",
+    "semantic_hash": "fb66b1f7e2e35239f38aa3c295e6f4f2"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/TestByteSemantics.java": {
+    "mtime": 1788490659.2984285,
+    "seen": 1788494183.167089,
+    "ast_hash": "44dc4669079a1505a8383312cb9defc7",
+    "semantic_hash": "44dc4669079a1505a8383312cb9defc7"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/TestEcmProtocol.kt": {
+    "mtime": 1788490659.2986977,
+    "seen": 1788494183.16709,
+    "ast_hash": "a9a3e0c7cd52ab2a89d3521411e26fc0",
+    "semantic_hash": "a9a3e0c7cd52ab2a89d3521411e26fc0"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/TestPDU.java": {
+    "mtime": 1788490659.2988853,
+    "seen": 1788494183.16709,
+    "ast_hash": "5bdcbc6e96223b42da04fda3251a895b",
+    "semantic_hash": "5bdcbc6e96223b42da04fda3251a895b"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/TestUtilsFunctions.kt": {
+    "mtime": 1788490659.2989473,
+    "seen": 1788494183.167091,
+    "ast_hash": "f820173556b0af17e9425c284090a40b",
+    "semantic_hash": "f820173556b0af17e9425c284090a40b"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/integration/EcmSimConnectionLossIntegrationTest.kt": {
+    "mtime": 1788490659.299097,
+    "seen": 1788494183.167091,
+    "ast_hash": "875e27d340e0336ad33dd4fcbccbd2a1",
+    "semantic_hash": "875e27d340e0336ad33dd4fcbccbd2a1"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/integration/EcmSimFixtures.kt": {
+    "mtime": 1788490659.2991545,
+    "seen": 1788494183.167091,
+    "ast_hash": "cae6aaa6a6a30d6e576e1895ea6762b9",
+    "semantic_hash": "cae6aaa6a6a30d6e576e1895ea6762b9"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/integration/EcmSimIntegrationSuite.kt": {
+    "mtime": 1788490659.2992346,
+    "seen": 1788494183.167092,
+    "ast_hash": "93a5b8db5cea2932ed3797a81141cd24",
+    "semantic_hash": "93a5b8db5cea2932ed3797a81141cd24"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/integration/EcmSimProcess.kt": {
+    "mtime": 1788490659.299385,
+    "seen": 1788494183.167092,
+    "ast_hash": "419663354073cfb125e90e6b4692ef5d",
+    "semantic_hash": "419663354073cfb125e90e6b4692ef5d"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/integration/EcmSimProtocolIntegrationTest.kt": {
+    "mtime": 1788490659.2997508,
+    "seen": 1788494183.167092,
+    "ast_hash": "664d42e1cb125281602011f93e79cb59",
+    "semantic_hash": "664d42e1cb125281602011f93e79cb59"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/integration/EcmSimRule.kt": {
+    "mtime": 1788490659.2998183,
+    "seen": 1788494183.167093,
+    "ast_hash": "d4c45ac03a2fe76b5f0c6c3173b9eda5",
+    "semantic_hash": "d4c45ac03a2fe76b5f0c6c3173b9eda5"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/integration/JdbcEcmDefinitions.kt": {
+    "mtime": 1788490659.299896,
+    "seen": 1788494183.167093,
+    "ast_hash": "6704750784c0935d76eda4deab1a8323",
+    "semantic_hash": "6704750784c0935d76eda4deab1a8323"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/integration/PduRelay.kt": {
+    "mtime": 1788490659.2999792,
+    "seen": 1788494183.167093,
+    "ast_hash": "f6b0838fd790c1485f99493a77f28938",
+    "semantic_hash": "f6b0838fd790c1485f99493a77f28938"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/service/PollRecordLoopTest.kt": {
+    "mtime": 1788490659.3000891,
+    "seen": 1788494183.167094,
+    "ast_hash": "8a4d52b43b11ce71e1284fefca5f3649",
+    "semantic_hash": "8a4d52b43b11ce71e1284fefca5f3649"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/service/RecordingFormatTest.kt": {
+    "mtime": 1788490659.3001747,
+    "seen": 1788494183.167094,
+    "ast_hash": "f304fb2c03eb83a505579a846da74ee6",
+    "semantic_hash": "f304fb2c03eb83a505579a846da74ee6"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/service/ServiceTestSupport.kt": {
+    "mtime": 1788490659.3002524,
+    "seen": 1788494183.167094,
+    "ast_hash": "1b76fe01d74497cbae5535426a5e723c",
+    "semantic_hash": "1b76fe01d74497cbae5535426a5e723c"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/transport/BleTransportTest.kt": {
+    "mtime": 1788490659.3004005,
+    "seen": 1788494183.167095,
+    "ast_hash": "9bbe060260d247dfee003736780f4daf",
+    "semantic_hash": "9bbe060260d247dfee003736780f4daf"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/transport/BluetoothClassicTransportTest.kt": {
+    "mtime": 1788490659.30047,
+    "seen": 1788494183.167095,
+    "ast_hash": "458de3f936f6f4ebe9635c3d1f8740df",
+    "semantic_hash": "458de3f936f6f4ebe9635c3d1f8740df"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/transport/EcmTransportContractTest.kt": {
+    "mtime": 1788490659.3005555,
+    "seen": 1788494183.167095,
+    "ast_hash": "0ee288ecf7e29cbfd19a86814c93900d",
+    "semantic_hash": "0ee288ecf7e29cbfd19a86814c93900d"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/transport/PduFramingTest.kt": {
+    "mtime": 1788490659.3006504,
+    "seen": 1788494183.1670961,
+    "ast_hash": "52b54bf090253203d89aa4c069156d63",
+    "semantic_hash": "52b54bf090253203d89aa4c069156d63"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/transport/TcpTransportTest.kt": {
+    "mtime": 1788490659.3007264,
+    "seen": 1788494183.1670961,
+    "ast_hash": "e54c317c3fda3036319056317b967834",
+    "semantic_hash": "e54c317c3fda3036319056317b967834"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/transport/TransportTestSupport.kt": {
+    "mtime": 1788490659.3007956,
+    "seen": 1788494183.1670961,
+    "ast_hash": "b0d26d36b9ac9a6499f2aeb21ad0b01e",
+    "semantic_hash": "b0d26d36b9ac9a6499f2aeb21ad0b01e"
+  },
+  "app/src/test/java/biz/logicminds/buelltune/transport/UsbSerialTransportTest.kt": {
+    "mtime": 1788490659.3008602,
+    "seen": 1788494183.167097,
+    "ast_hash": "474a774b5507eadc10de664f15dab0eb",
+    "semantic_hash": "474a774b5507eadc10de664f15dab0eb"
+  },
+  "build.gradle.kts": {
+    "mtime": 1788490659.3009315,
+    "seen": 1788494183.167097,
+    "ast_hash": "3a6bb2d87201f3334da4b70a9d7da0bd",
+    "semantic_hash": "3a6bb2d87201f3334da4b70a9d7da0bd"
+  },
+  "gradle/ecmsim.gradle.kts": {
+    "mtime": 1788490659.3059556,
+    "seen": 1788494183.167097,
+    "ast_hash": "8e4921689f45f16b26dc73ffc7654445",
+    "semantic_hash": "8e4921689f45f16b26dc73ffc7654445"
+  },
+  "gradlew": {
+    "mtime": 1788490659.3065374,
+    "seen": 1788494183.167098,
+    "ast_hash": "48fe0bd77a66bbb62c1150926ab1332c",
+    "semantic_hash": "48fe0bd77a66bbb62c1150926ab1332c"
+  },
+  "scripts/mysql2sqlite.sh": {
+    "mtime": 1788490659.3070273,
+    "seen": 1788494183.167098,
+    "ast_hash": "0029197bbaf57c8d60300c2e0896d137",
+    "semantic_hash": "0029197bbaf57c8d60300c2e0896d137"
+  },
+  "scripts/prepare_release.py": {
+    "mtime": 1788490659.3072233,
+    "seen": 1788494183.167098,
+    "ast_hash": "3e06eca9d1f096d8a9ef0bf870acd272",
+    "semantic_hash": "3e06eca9d1f096d8a9ef0bf870acd272"
+  },
+  "settings.gradle.kts": {
+    "mtime": 1788490659.3072906,
+    "seen": 1788494183.167098,
+    "ast_hash": "963e813e0b95c6378a984f1447c0444e",
+    "semantic_hash": "963e813e0b95c6378a984f1447c0444e"
+  },
+  ".agents/skills/beads/SKILL.md": {
+    "mtime": 1788490659.2548351,
+    "seen": 1788494183.167099,
+    "ast_hash": "4eba59bd27c18667fbbed3d5942b40ef",
+    "semantic_hash": "4eba59bd27c18667fbbed3d5942b40ef"
+  },
+  ".agents/skills/beads/agents/openai.yaml": {
+    "mtime": 1788490659.2550578,
+    "seen": 1788494183.167099,
+    "ast_hash": "075f32133b20f796e271f03cd50cd03e",
+    "semantic_hash": "075f32133b20f796e271f03cd50cd03e"
+  },
+  ".beads/README.md": {
+    "mtime": 1788490659.2556098,
+    "seen": 1788494183.167099,
+    "ast_hash": "7b562344dfbbf12388c3032ba0aa4d4e",
+    "semantic_hash": "7b562344dfbbf12388c3032ba0aa4d4e"
+  },
+  ".beads/config.yaml": {
+    "mtime": 1788490659.2559638,
+    "seen": 1788494183.1671,
+    "ast_hash": "6518af71cf33fb622266484754978d37",
+    "semantic_hash": "6518af71cf33fb622266484754978d37"
+  },
+  ".github/workflows/ci.yml": {
+    "mtime": 1788490659.2589254,
+    "seen": 1788494183.1671,
+    "ast_hash": "fd4bac3873862296dea66aeb2f7b9bb4",
+    "semantic_hash": "fd4bac3873862296dea66aeb2f7b9bb4"
+  },
+  ".github/workflows/create-release.yml": {
+    "mtime": 1788490659.2590008,
+    "seen": 1788494183.1671,
+    "ast_hash": "92495f13d140ab9bd411550a537ec737",
+    "semantic_hash": "92495f13d140ab9bd411550a537ec737"
+  },
+  ".github/workflows/release.yml": {
+    "mtime": 1788490659.2594333,
+    "seen": 1788494183.167101,
+    "ast_hash": "a5e977f1936134647ca74c3bfd0eb35a",
+    "semantic_hash": "a5e977f1936134647ca74c3bfd0eb35a"
+  },
+  ".github/workflows/tag-release.yml": {
+    "mtime": 1788490659.2595048,
+    "seen": 1788494183.167101,
+    "ast_hash": "1dcd47a1af567e38aabc641e5e76db83",
+    "semantic_hash": "1dcd47a1af567e38aabc641e5e76db83"
+  },
+  "AGENTS.md": {
+    "mtime": 1788493562.005981,
+    "seen": 1788494183.167101,
+    "ast_hash": "745e31e6554b3eaec6c18eecb16eeab5",
+    "semantic_hash": "745e31e6554b3eaec6c18eecb16eeab5"
+  },
+  "CHANGELOG.md": {
+    "mtime": 1788490659.2603014,
+    "seen": 1788494183.1671019,
+    "ast_hash": "68b75c6a0b56f62e4d8d1befc635d517",
+    "semantic_hash": "68b75c6a0b56f62e4d8d1befc635d517"
+  },
+  "CLAUDE.md": {
+    "mtime": 1788490659.260599,
+    "seen": 1788494183.1671019,
+    "ast_hash": "6e3c092ad818b965525089a33a0924d0",
+    "semantic_hash": "6e3c092ad818b965525089a33a0924d0"
+  },
+  "README.md": {
+    "mtime": 1788490659.2612317,
+    "seen": 1788494183.1671019,
+    "ast_hash": "2d145184860fca305c4ea9ff1c462b7d",
+    "semantic_hash": "2d145184860fca305c4ea9ff1c462b7d"
+  },
+  "app/src/main/assets/about.html": {
+    "mtime": 1788490659.273198,
+    "seen": 1788494183.167103,
+    "ast_hash": "d4cc2c02e3ee6f8b41f8b547946cf354",
+    "semantic_hash": "d4cc2c02e3ee6f8b41f8b547946cf354"
+  },
+  "docs/DEVELOPER_GUIDE.md": {
+    "mtime": 1788490659.301362,
+    "seen": 1788494183.167103,
+    "ast_hash": "748a910b8afb276cba578fab5802b37d",
+    "semantic_hash": "748a910b8afb276cba578fab5802b37d"
+  },
+  "docs/ROADMAP.md": {
+    "mtime": 1788490659.301574,
+    "seen": 1788494183.167103,
+    "ast_hash": "df532848f67e3deeef1791398d468278",
+    "semantic_hash": "df532848f67e3deeef1791398d468278"
+  },
+  "docs/USER_GUIDE.md": {
+    "mtime": 1788490659.3018048,
+    "seen": 1788494183.167104,
+    "ast_hash": "4303ceff66fdf68f952fd1057e2eaf85",
+    "semantic_hash": "4303ceff66fdf68f952fd1057e2eaf85"
+  },
+  "docs/branding/README.md": {
+    "mtime": 1788490659.3020446,
+    "seen": 1788494183.167104,
+    "ast_hash": "cabf8caf59da6434834e83b93bd197fe",
+    "semantic_hash": "cabf8caf59da6434834e83b93bd197fe"
+  },
+  "docs/plans/2026-08-30-001-refactor-kotlin-foundation-compliance-plan.md": {
+    "mtime": 1788490659.3044748,
+    "seen": 1788494183.167104,
+    "ast_hash": "37daaf0bd5dec492a705abf64219dd7e",
+    "semantic_hash": "37daaf0bd5dec492a705abf64219dd7e"
+  },
+  "docs/plans/2026-09-01-001-feat-visual-rebrand-icon-docs-plan.md": {
+    "mtime": 1788490659.3048475,
+    "seen": 1788494183.167105,
+    "ast_hash": "7b0245fbbd9b20d84ac38e7e431dc8a1",
+    "semantic_hash": "7b0245fbbd9b20d84ac38e7e431dc8a1"
+  },
+  "docs/plans/2026-09-01-002-feat-visual-rebrand-theme-screens-plan.md": {
+    "mtime": 1788490659.305201,
+    "seen": 1788494183.167105,
+    "ast_hash": "8eea21a246c5c1f99a4e4e38d6568274",
+    "semantic_hash": "8eea21a246c5c1f99a4e4e38d6568274"
+  },
+  "privacy-policy.md": {
+    "mtime": 1788490659.3066685,
+    "seen": 1788494183.1671062,
+    "ast_hash": "3d0e20945b6f78ebcd3dd51f7f21d2fa",
+    "semantic_hash": "3d0e20945b6f78ebcd3dd51f7f21d2fa"
+  },
+  "app/src/main/res/drawable-nodpi/splash_banner.png": {
+    "mtime": 1788490659.2887084,
+    "seen": 1788494183.1671062,
+    "ast_hash": "1bb2aa46b6988b2a0660fc014c10fc2b",
+    "semantic_hash": "1bb2aa46b6988b2a0660fc014c10fc2b"
+  },
+  "app/src/main/res/drawable/buelltune_logo.png": {
+    "mtime": 1788490659.2890363,
+    "seen": 1788494183.1671062,
+    "ast_hash": "e28c7d33ef5d9dbd3f2fa56f6ec8381b",
+    "semantic_hash": "e28c7d33ef5d9dbd3f2fa56f6ec8381b"
+  },
+  "app/src/main/res/mipmap-hdpi/ic_launcher.png": {
+    "mtime": 1788490659.294778,
+    "seen": 1788494183.167107,
+    "ast_hash": "edefad7e82efa03f081f5bd8e8f618bd",
+    "semantic_hash": "edefad7e82efa03f081f5bd8e8f618bd"
+  },
+  "app/src/main/res/mipmap-mdpi/ic_launcher.png": {
+    "mtime": 1788490659.295005,
+    "seen": 1788494183.167107,
+    "ast_hash": "0fb040110a8ad1a882fe293982eac976",
+    "semantic_hash": "0fb040110a8ad1a882fe293982eac976"
+  },
+  "app/src/main/res/mipmap-xhdpi/ic_launcher.png": {
+    "mtime": 1788490659.2952583,
+    "seen": 1788494183.167107,
+    "ast_hash": "d261da839b215a51df86d2f381573fac",
+    "semantic_hash": "d261da839b215a51df86d2f381573fac"
+  },
+  "app/src/main/res/mipmap-xxhdpi/ic_launcher.png": {
+    "mtime": 1788490659.2955844,
+    "seen": 1788494183.167108,
+    "ast_hash": "4be95c1c038d28e677a1c5ce0a5dd856",
+    "semantic_hash": "4be95c1c038d28e677a1c5ce0a5dd856"
+  },
+  "app/src/main/res/mipmap-xxxhdpi/ic_launcher.png": {
+    "mtime": 1788490659.2958667,
+    "seen": 1788494183.167108,
+    "ast_hash": "9bbb905df5233eb632e2ad21d5aed05d",
+    "semantic_hash": "9bbb905df5233eb632e2ad21d5aed05d"
+  },
+  "docs/branding/buelltune-banner.png": {
+    "mtime": 1788490659.3031366,
+    "seen": 1788494183.167108,
+    "ast_hash": "7bb322c212045535a49667bcc4b92f87",
+    "semantic_hash": "7bb322c212045535a49667bcc4b92f87"
+  },
+  "docs/branding/buelltune-banner.svg": {
+    "mtime": 1788490659.3033957,
+    "seen": 1788494183.167109,
+    "ast_hash": "f977e12a35d2134bf1c2ae602be6591e",
+    "semantic_hash": "f977e12a35d2134bf1c2ae602be6591e"
+  },
+  "docs/branding/icon.svg": {
+    "mtime": 1788490659.3036702,
+    "seen": 1788494183.167109,
+    "ast_hash": "43fedfee801eb94a5fae6cb7a27e8c72",
+    "semantic_hash": "43fedfee801eb94a5fae6cb7a27e8c72"
+  }
+}
