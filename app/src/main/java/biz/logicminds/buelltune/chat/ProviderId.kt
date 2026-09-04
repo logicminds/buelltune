@@ -28,6 +28,23 @@ package biz.logicminds.buelltune.chat
  * lower-latency, non-proxied path and lets a rider use a Kimi-specific key
  * instead of an OpenRouter account.
  *
+ * [KIMI_CODE] is a separate product from [KIMI]: Moonshot's subscription
+ * coding-agent plan (`https://www.kimi.com/code`), billed and entitled
+ * independently of the pay-per-token Moonshot Open Platform [KIMI] talks
+ * to, reached at a different base URL
+ * (`https://api.kimi.com/coding/v1`) with different model ids (`k3`,
+ * `k3-256k`, `kimi-for-coding`, `kimi-for-coding-highspeed`). Riders
+ * generate its API key from the Kimi Code Console
+ * (`https://www.kimi.com/code/console`) - Moonshot's own docs
+ * (`kimi.com/code/docs/en/kimi-code/models.html`) document exactly this
+ * static-API-key third-party-tool integration path generically ("Create
+ * an API Key in the Kimi Code Console... fill in the Base URL and Model
+ * ID in your tool"), separately from Kimi Code's OAuth device-flow login
+ * (deliberately not implemented here - that path gates on a server-side
+ * allowlist of recognized coding-agent client identities, confirmed via
+ * real third-party breakage reports, a materially different risk profile
+ * from a static, self-provisioned API key hitting a documented endpoint).
+ *
  * AWS Bedrock is deliberately excluded (KD4 correction, U5): Koog 1.2.0's
  * `prompt-executor-bedrock-client-android` artifact compiles to a single
  * internal `Stub` class on the Android target - no `BedrockLLMClient`,
@@ -45,4 +62,5 @@ enum class ProviderId {
     OPENROUTER,
     OLLAMA,
     KIMI,
+    KIMI_CODE,
 }

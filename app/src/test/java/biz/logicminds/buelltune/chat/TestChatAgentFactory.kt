@@ -21,6 +21,7 @@ import ai.koog.prompt.executor.clients.anthropic.AnthropicModels
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -32,10 +33,12 @@ import org.junit.Test
  * here calls a real provider API or opens a network connection:
  * [ChatAgentFactory]'s client-construction/`listModels` half (the
  * network-calling side) has no coverage here or anywhere else in this
- * codebase - an accepted v1 gap, confirmed by code review. This file only
- * proves the selection logic downstream of a model id, whether that id
- * came from a live `listModels` result or (for legacy rows) the constant
- * literal `"default"`.
+ * codebase for every provider except [ProviderId.KIMI_CODE] - an accepted
+ * v1 gap, confirmed by code review. `listModels(KIMI_CODE, ...)` is the
+ * one exception: it never builds a client or opens a connection (Kimi
+ * Code has no models-list endpoint at all, confirmed against a real
+ * device - see [ChatAgentFactory]'s KDoc), so it's exercised directly
+ * below alongside the rest of this class's selection-logic tests.
  */
 class TestChatAgentFactory {
 
@@ -86,6 +89,48 @@ class TestChatAgentFactory {
     }
 
     @Test
+    fun kimiCode_defaultModelId_resolvesToKimiForCoding() {
+        // "kimi-for-coding" (K2.7 Code) is the only Kimi Code model
+        // available on every membership tier (Moonshot's own Model
+        // Configuration doc) - the safe default when no modelId is picked.
+        val resolved = factory.resolveModel(ProviderId.KIMI_CODE, "default")
+        assertEquals("kimi-for-coding", resolved.id)
+        assertTrue(resolved.supports(LLMCapability.Tools))
+    }
+
+    @Test
+    fun kimiCode_listModels_returnsItsStaticCatalog_noNetworkCall() = runBlocking {
+        // The one listModels branch this suite can exercise directly: Kimi
+        // Code has no models-list endpoint (real device call to
+        // .../coding/v1/models returned a genuine 404), so this must never
+        // attempt to build a client or reach the network - it just returns
+        // the same hand-built catalog resolveModel already draws from.
+        val models = factory.listModels(ProviderId.KIMI_CODE, ProviderCredentials(apiKey = null))
+        assertEquals(
+            setOf("kimi-for-coding", "kimi-for-coding-highspeed", "k3-256k", "k3"),
+            models.map { it.id }.toSet(),
+        )
+        assertTrue(models.all { it.supports(LLMCapability.Tools) })
+    }
+
+    @Test
+    fun kimiCode_allFourRealModelIds_resolveFromItsHandBuiltCatalog() {
+        // Kimi Code is a separate product/catalog from plain Kimi
+        // (ProviderId.KIMI) - distinct model ids, hand-built the same way
+        // since Koog has no catalog for either. Confirms every documented
+        // Kimi Code model id (kimi.com/code/docs/en/kimi-code/models.html)
+        // resolves to itself, tool-capable, rather than silently falling
+        // through to assumedCapableModel's generic path.
+        for (modelId in listOf("kimi-for-coding", "kimi-for-coding-highspeed", "k3-256k", "k3")) {
+            val resolved = factory.resolveModel(ProviderId.KIMI_CODE, modelId)
+            assertEquals(modelId, resolved.id)
+            assertTrue("$modelId should be tool-capable", resolved.supports(LLMCapability.Tools))
+        }
+        // k3's 1M context is the one real differentiator worth pinning.
+        assertEquals(1_048_576L, factory.resolveModel(ProviderId.KIMI_CODE, "k3").contextLength)
+    }
+
+    @Test
     fun assumedCapableModel_matchesEachProvidersRealLLMProviderTag() {
         // This mapping must exactly match what each provider's real
         // LLMClient reports via llmProvider() - a mismatch would make
@@ -98,5 +143,6 @@ class TestChatAgentFactory {
         assertEquals(LLMProvider.OpenRouter, factory.assumedCapableModel(ProviderId.OPENROUTER, "x").provider)
         assertEquals(LLMProvider.Ollama, factory.assumedCapableModel(ProviderId.OLLAMA, "x").provider)
         assertEquals(LLMProvider.OpenAI, factory.assumedCapableModel(ProviderId.KIMI, "x").provider)
+        assertEquals(LLMProvider.OpenAI, factory.assumedCapableModel(ProviderId.KIMI_CODE, "x").provider)
     }
 }

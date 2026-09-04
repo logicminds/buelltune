@@ -85,6 +85,24 @@
 			app:useSimpleSummaryProvider="false" />
 	</PreferenceCategory>
 	<PreferenceCategory
+		android:key="llm_kimi_code_category"
+		android:title="@string/llm_kimi_code_category"
+		android:icon="@drawable/ic_provider_kimi_code">
+		<EditTextPreference
+			android:key="llm_kimi_code_key"
+			android:icon="@drawable/ic_provider_kimi_code"
+			android:inputType="textPassword"
+			android:title="@string/llm_kimi_code_key_title"
+			android:summary="@string/llm_kimi_code_key_summary"
+			app:useSimpleSummaryProvider="false" />
+		<EditTextPreference
+			android:key="llm_kimi_code_base_url"
+			android:inputType="textUri"
+			android:title="@string/llm_kimi_code_base_url_title"
+			android:summary="@string/llm_kimi_code_base_url_summary"
+			app:useSimpleSummaryProvider="false" />
+	</PreferenceCategory>
+	<PreferenceCategory
 		android:key="llm_ollama_category"
 		android:title="@string/llm_ollama_category"
 		android:icon="@drawable/ic_provider_ollama">

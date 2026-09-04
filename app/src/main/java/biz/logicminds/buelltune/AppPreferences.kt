@@ -196,6 +196,20 @@ object AppPreferences {
     @JvmStatic
     fun kimiBaseUrl(context: Context): String? = defaultPrefs(context).getString("llm_kimi_base_url", null)
 
+    /** Kimi Code (Moonshot's coding-agent subscription plan) API key, set via the `llm_kimi_code_key` `EditTextPreference`; `null` until configured. Generated from the Kimi Code Console (`kimi.com/code/console`), a separate credential from [kimiApiKey]. */
+    @JvmStatic
+    fun kimiCodeApiKey(context: Context): String? = defaultPrefs(context).getString("llm_kimi_code_key", null)
+
+    /**
+     * Optional custom base URL for Kimi Code's OpenAI-protocol endpoint,
+     * set via the `llm_kimi_code_base_url` `EditTextPreference`;
+     * `null`/blank means Kimi Code's documented default
+     * (`https://api.kimi.com/coding/v1`, applied in
+     * [biz.logicminds.buelltune.chat.ChatAgentFactory]).
+     */
+    @JvmStatic
+    fun kimiCodeBaseUrl(context: Context): String? = defaultPrefs(context).getString("llm_kimi_code_base_url", null)
+
     /**
      * Providers with a non-blank credential set, in [ProviderId] declaration order. Ollama counts
      * as configured on a non-blank base URL alone (R11: no API key, just a reachable server);
@@ -213,6 +227,7 @@ object AppPreferences {
         if (!openRouterApiKey(context).isNullOrBlank()) configured.add(ProviderId.OPENROUTER)
         if (!ollamaBaseUrl(context).isNullOrBlank()) configured.add(ProviderId.OLLAMA)
         if (!kimiApiKey(context).isNullOrBlank()) configured.add(ProviderId.KIMI)
+        if (!kimiCodeApiKey(context).isNullOrBlank()) configured.add(ProviderId.KIMI_CODE)
         return configured
     }
 
@@ -234,6 +249,7 @@ object AppPreferences {
         ProviderId.OPENROUTER -> ProviderCredentials(apiKey = openRouterApiKey(context))
         ProviderId.OLLAMA -> ProviderCredentials(baseUrl = ollamaBaseUrl(context))
         ProviderId.KIMI -> ProviderCredentials(apiKey = kimiApiKey(context), baseUrl = kimiBaseUrl(context))
+        ProviderId.KIMI_CODE -> ProviderCredentials(apiKey = kimiCodeApiKey(context), baseUrl = kimiCodeBaseUrl(context))
     }
 
     // --- OpenRouter OAuth PKCE (biz.logicminds.buelltune.chat.OpenRouterOAuth) ---

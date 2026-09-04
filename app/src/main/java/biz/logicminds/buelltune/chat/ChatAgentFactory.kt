@@ -73,13 +73,42 @@ private const val KIMI_DEFAULT_BASE_URL = "https://api.moonshot.ai/v1"
  * [assumedCapableModel] builds for a custom OpenAI-compatible base URL,
  * Kimi's own live model list, or an Ollama model pulled locally (see
  * [listModels]/[resolveModel]). [LLMCapability.Tools] is required for
- * [EcmTools] to work at all.
+ * [EcmTools] to work at all. The other three flags are each a real bug
+ * this project hit against a real device (a hand-built [LLModel] missing
+ * one of them isn't a degraded/best-effort model, it's one Koog's own
+ * clients hard-refuse to send a request for at all), not defensive
+ * padding:
+ * - [LLMCapability.Completion] is the base "this model can generate at
+ *   all" flag every real catalog entry across every Koog provider client
+ *   carries (confirmed by inspecting [AnthropicModels]/[OpenAIModels]/
+ *   [GoogleModels]/etc. directly - none omit it). Every OpenAI-family
+ *   client `require(model.supports(LLMCapability.Completion))`s it before
+ *   sending anything; missing it, [OpenAILLMClient] threw "Model
+ *   kimi-for-coding does not support completion" on a real device call.
+ * - [LLMCapability.OpenAIEndpoint.Completions] is how
+ *   [OpenAILLMClient.determineParams] decides whether to shape a request
+ *   for the classic `/chat/completions` wire format or the newer
+ *   `/responses` one - missing both this and
+ *   [LLMCapability.OpenAIEndpoint.Responses], it hard-throws
+ *   `LLMClientException("Cannot determine proper LLM params for OpenAI
+ *   model: $id")`, also confirmed on a real device call.
+ *
+ * Every model this set backs (Kimi, Kimi Code, a rider's custom
+ * OpenAI-compatible endpoint) speaks the classic chat-completions
+ * protocol, confirmed against each provider's own docs. Non-OpenAI
+ * clients ([AnthropicLLMClient] etc., via [llmProviderFor]) simply ignore
+ * [LLMCapability.OpenAIEndpoint.Completions] - it's OpenAI-client-
+ * specific, not a claim about what the underlying provider itself
+ * supports; [LLMCapability.Completion] is the one flag every client here
+ * actually requires.
  */
 private val ASSUMED_CHAT_CAPABILITIES = listOf(
     LLMCapability.Temperature,
     LLMCapability.Tools,
     LLMCapability.ToolChoice,
     LLMCapability.Schema.JSON.Basic,
+    LLMCapability.Completion,
+    LLMCapability.OpenAIEndpoint.Completions,
 )
 
 /**
@@ -100,6 +129,37 @@ private val KIMI_DEFAULT_MODEL = LLModel(
     contextLength = 262_144,
     maxOutputTokens = 262_144,
 )
+
+/** Kimi Code's documented OpenAI-compatible base URL (kimi.com/code/docs/en/ - "API Access" / "Service Endpoint" table). Distinct product/billing from [KIMI_DEFAULT_BASE_URL]. */
+private const val KIMI_CODE_DEFAULT_BASE_URL = "https://api.kimi.com/coding/v1"
+
+/**
+ * Kimi Code's four model ids, hand-built the same way [KIMI_DEFAULT_MODEL]
+ * is - Koog has no catalog for these either. Context windows and default
+ * model id sourced from Moonshot's own docs (kimi.com/code/docs/en/,
+ * "Model IDs" table): `k3` is the flagship, up to 1M context on higher
+ * membership tiers (Koog's [LLModel] has no per-tier concept, so this
+ * uses the ceiling value - a lower-tier account gets a normal over-quota
+ * error from Kimi Code itself, not a client-side failure); `k3-256k` is
+ * the fixed-256K version of the same model at roughly half the quota
+ * cost; `kimi-for-coding` (K2.7 Code) is available to every membership
+ * tier - the safe default; `kimi-for-coding-highspeed` needs an
+ * Allegretto-or-above plan. This is also the *complete* model catalog for
+ * this provider, not just a fallback: Kimi Code has no models-list
+ * endpoint at all (confirmed both by Moonshot's own docs, which document
+ * chat completions and this fixed table but nothing else, and by a real
+ * device call to `{KIMI_CODE_DEFAULT_BASE_URL}/models` returning a
+ * genuine `resource_not_found_error` 404, not an auth failure) - see
+ * [listModels]'s early-return for this provider.
+ */
+private val KIMI_CODE_MODELS = listOf(
+    LLModel(provider = LLMProvider.OpenAI, id = "kimi-for-coding", capabilities = ASSUMED_CHAT_CAPABILITIES, contextLength = 262_144, maxOutputTokens = 262_144),
+    LLModel(provider = LLMProvider.OpenAI, id = "kimi-for-coding-highspeed", capabilities = ASSUMED_CHAT_CAPABILITIES, contextLength = 262_144, maxOutputTokens = 262_144),
+    LLModel(provider = LLMProvider.OpenAI, id = "k3-256k", capabilities = ASSUMED_CHAT_CAPABILITIES, contextLength = 262_144, maxOutputTokens = 262_144),
+    LLModel(provider = LLMProvider.OpenAI, id = "k3", capabilities = ASSUMED_CHAT_CAPABILITIES, contextLength = 1_048_576, maxOutputTokens = 262_144),
+)
+
+private val KIMI_CODE_DEFAULT_MODEL = KIMI_CODE_MODELS.first { it.id == "kimi-for-coding" }
 
 /**
  * Credentials for the provider a conversation is bound to (KD5): [apiKey]
@@ -158,11 +218,18 @@ class ChatAgentFactory {
      * again at chat-creation time via [assumedCapableModel], so a model
      * this method offered is always actually usable.
      *
-     * Ollama's [LLMClient] (unlike every other provider here) does not
-     * override Koog's `models()` - [OllamaClient.getModels] is the real
-     * equivalent, called directly instead.
+     * Two providers skip the network call entirely and return a static
+     * list instead of querying `client.models()`: [ProviderId.KIMI_CODE]
+     * has no models-list endpoint at all (see [KIMI_CODE_MODELS]'s KDoc),
+     * so [KIMI_CODE_MODELS] itself *is* the live list; Ollama's
+     * [LLMClient] does not override Koog's `models()` -
+     * [OllamaClient.getModels] is the real equivalent, called directly
+     * instead.
      */
     suspend fun listModels(providerId: ProviderId, credentials: ProviderCredentials): List<LLModel> {
+        if (providerId == ProviderId.KIMI_CODE) {
+            return KIMI_CODE_MODELS
+        }
         val client = buildClient(providerId, credentials)
         val models = if (client is OllamaClient) {
             client.getModels().map { card -> LLModel(provider = LLMProvider.Ollama, id = card.name) }
@@ -208,6 +275,7 @@ class ChatAgentFactory {
         ProviderId.OPENROUTER -> OpenRouterModels.GPT4o
         ProviderId.OLLAMA -> OllamaModels.Meta.LLAMA_3_2
         ProviderId.KIMI -> KIMI_DEFAULT_MODEL
+        ProviderId.KIMI_CODE -> KIMI_CODE_DEFAULT_MODEL
     }
 
     private fun catalogedModel(providerId: ProviderId, modelId: String): LLModel? = when (providerId) {
@@ -218,6 +286,7 @@ class ChatAgentFactory {
         ProviderId.OPENROUTER -> OpenRouterModels.modelsById()[modelId]
         ProviderId.OLLAMA -> OllamaModels.modelsById()[modelId]
         ProviderId.KIMI -> null // Koog has no Kimi/Moonshot catalog at all (see KIMI_DEFAULT_MODEL's KDoc)
+        ProviderId.KIMI_CODE -> KIMI_CODE_MODELS.firstOrNull { it.id == modelId }
     }
 
     internal fun assumedCapableModel(providerId: ProviderId, modelId: String): LLModel =
@@ -231,6 +300,7 @@ class ChatAgentFactory {
         ProviderId.OPENROUTER -> LLMProvider.OpenRouter
         ProviderId.OLLAMA -> LLMProvider.Ollama
         ProviderId.KIMI -> LLMProvider.OpenAI // matches KIMI_DEFAULT_MODEL's own provider tag - Moonshot speaks the OpenAI wire protocol
+        ProviderId.KIMI_CODE -> LLMProvider.OpenAI // same reasoning - Kimi Code's endpoint is OpenAI-protocol-compatible too
     }
 
     private fun buildClient(providerId: ProviderId, credentials: ProviderCredentials): LLMClient = when (providerId) {
@@ -265,12 +335,63 @@ class ChatAgentFactory {
         ProviderId.KIMI -> {
             // Moonshot's own platform speaks the OpenAI chat-completions
             // protocol (confirmed against platform.kimi.ai's docs), so the
-            // OpenAI client works unmodified pointed at its base URL.
+            // OpenAI client works unmodified pointed at its base URL. Both
+            // KIMI_DEFAULT_BASE_URL and any rider-typed override already
+            // include the trailing `/v1` segment - that's how Moonshot's
+            // own docs present "Base URL" verbatim, and llm_kimi_base_url_
+            // summary tells the rider the same thing. OpenAIClientSettings'
+            // *default* chatCompletionsPath/modelsPath
+            // ("v1/chat/completions"/"v1/models") assume a bare host
+            // instead and re-add that same segment - unoverridden, this
+            // doubles to a genuine `/v1/v1/...` request path and 404s
+            // (confirmed on a real device against Kimi Code's identical
+            // base-URL shape below, before this fix). Overriding both to
+            // drop the redundant `v1/` prefix is what actually makes this
+            // base URL (or a rider's own, following the same documented
+            // convention) resolve correctly.
             val apiKey = requireApiKey(providerId, credentials)
             val baseUrl = credentials.baseUrl?.takeIf { it.isNotBlank() } ?: KIMI_DEFAULT_BASE_URL
             OpenAILLMClient(
                 apiKey = apiKey,
-                settings = OpenAIClientSettings(baseUrl = baseUrl),
+                settings = OpenAIClientSettings(
+                    baseUrl = baseUrl,
+                    chatCompletionsPath = "chat/completions",
+                    modelsPath = "models",
+                ),
+                httpClientFactory = koogHttpClientFactory,
+            )
+        }
+        ProviderId.KIMI_CODE -> {
+            // Kimi Code's own docs (kimi.com/code/docs/en/ - "API Access" /
+            // "Service Endpoint" table) document two protocols against this
+            // product: OpenAI-compatible at this base URL
+            // (KIMI_CODE_DEFAULT_BASE_URL, .../chat/completions) or
+            // Anthropic-compatible at a sibling base URL (.../v1/messages).
+            // This client speaks the OpenAI-compatible one. Create a key in
+            // the Kimi Code Console (kimi.com/code/console) - a separate
+            // credential/base URL from the plain KIMI branch above:
+            // different product, different billing, different endpoint.
+            //
+            // chatCompletionsPath is overridden for the same reason as the
+            // KIMI branch above - KIMI_CODE_DEFAULT_BASE_URL already ends
+            // in `/v1` (Kimi Code's own documented "Base URL" string), and
+            // leaving OpenAIClientSettings' default `chatCompletionsPath`
+            // ("v1/chat/completions") in place doubles it to a real
+            // `/coding/v1/v1/chat/completions` request - confirmed on a
+            // real device: the exact 404 `resource_not_found_error` this
+            // project hit sending a genuine chat message through this
+            // provider before this fix, not the earlier (separate, already
+            // fixed) `/models`-listing 404. modelsPath is left at its
+            // default since this provider never calls it - see
+            // [listModels]'s early-return for [ProviderId.KIMI_CODE].
+            val apiKey = requireApiKey(providerId, credentials)
+            val baseUrl = credentials.baseUrl?.takeIf { it.isNotBlank() } ?: KIMI_CODE_DEFAULT_BASE_URL
+            OpenAILLMClient(
+                apiKey = apiKey,
+                settings = OpenAIClientSettings(
+                    baseUrl = baseUrl,
+                    chatCompletionsPath = "chat/completions",
+                ),
                 httpClientFactory = koogHttpClientFactory,
             )
         }

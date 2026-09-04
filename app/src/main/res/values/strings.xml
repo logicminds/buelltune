@@ -281,6 +281,11 @@
 	<string name="llm_kimi_key_title">API Key</string>
 	<string name="llm_kimi_base_url_title">Custom Base URL (optional)</string>
 	<string name="llm_kimi_base_url_summary">Defaults to api.moonshot.ai; override for the China-region endpoint or a proxy</string>
+	<string name="llm_kimi_code_category">Kimi Code</string>
+	<string name="llm_kimi_code_key_title">API Key</string>
+	<string name="llm_kimi_code_key_summary">From the Kimi Code Console (kimi.com/code/console) - a separate key from the plain Kimi provider above</string>
+	<string name="llm_kimi_code_base_url_title">Custom Base URL (optional)</string>
+	<string name="llm_kimi_code_base_url_summary">Defaults to api.kimi.com/coding/v1</string>
 	<string name="llm_openrouter_oauth_signin_title">Sign in with OpenRouter</string>
 	<string name="llm_openrouter_oauth_signin_summary">Connect your OpenRouter account instead of pasting a key below</string>
 	<string name="llm_openrouter_oauth_failed">OpenRouter sign-in did not complete. Try again.</string>
