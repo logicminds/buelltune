@@ -21,6 +21,7 @@ koogBeta = "1.2.0-beta"
 preference = "1.2.1"
 recyclerview = "1.4.0"
 kotlinxSerialization = "1.11.0"
+markwon = "4.6.2"
 
 [libraries]
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
@@ -59,6 +60,8 @@ koog-http-client-ktor = { group = "ai.koog", name = "http-client-ktor", version.
 preference-ktx = { group = "androidx.preference", name = "preference-ktx", version.ref = "preference" }
 recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+markwon-core = { group = "io.noties.markwon", name = "core", version.ref = "markwon" }
+markwon-ext-tables = { group = "io.noties.markwon", name = "ext-tables", version.ref = "markwon" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

@@ -119,6 +119,8 @@ dependencies {
     // exercises a real provider client's HTTP construction path.
     implementation(libs.koog.http.client.ktor)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.markwon.core)
+    implementation(libs.markwon.ext.tables)
     implementation(libs.preference.ktx)
     implementation(libs.recyclerview)
     implementation(libs.room.runtime)

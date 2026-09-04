@@ -43,11 +43,14 @@ import biz.logicminds.buelltune.activities.MainActivity
 import biz.logicminds.buelltune.chat.ChatMessageEntity
 import biz.logicminds.buelltune.chat.ChatRepository
 import biz.logicminds.buelltune.chat.ConversationEntity
+import biz.logicminds.buelltune.chat.ConversationWithPreview
 import biz.logicminds.buelltune.chat.EcmTools
 import biz.logicminds.buelltune.chat.ProviderId
 import biz.logicminds.buelltune.chat.Role
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
+import io.noties.markwon.Markwon
+import io.noties.markwon.ext.tables.TablePlugin
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.CancellationException
@@ -88,6 +91,7 @@ class ChatFragment : Fragment() {
     private lateinit var backButton: Button
     private lateinit var conversationTitle: TextView
     private lateinit var messageList: RecyclerView
+    private lateinit var thinkingIndicator: View
     private lateinit var toolCallStatus: TextView
     private lateinit var messageInput: EditText
     private lateinit var sendButton: Button
@@ -141,7 +145,7 @@ class ChatFragment : Fragment() {
         populatePromptChips()
 
         viewLifecycleOwner.lifecycleScope.launch {
-            chatRepository.conversations.collectLatest { conversations ->
+            chatRepository.conversationPreviews.collectLatest { conversations ->
                 conversationAdapter.submitList(conversations)
                 noConversationsMessage.visibility = if (conversations.isEmpty()) View.VISIBLE else View.GONE
             }
@@ -175,6 +179,7 @@ class ChatFragment : Fragment() {
         backButton = view.findViewById(R.id.backButton)
         conversationTitle = view.findViewById(R.id.conversationTitle)
         messageList = view.findViewById(R.id.messageList)
+        thinkingIndicator = view.findViewById(R.id.thinkingIndicator)
         toolCallStatus = view.findViewById(R.id.toolCallStatus)
         messageInput = view.findViewById(R.id.messageInput)
         sendButton = view.findViewById(R.id.sendButton)
@@ -411,8 +416,8 @@ class ChatFragment : Fragment() {
         val credentials = AppPreferences.credentialsFor(requireContext(), providerId)
 
         sendButton.isEnabled = false
-        toolCallStatus.visibility = View.VISIBLE
-        toolCallStatus.text = null
+        thinkingIndicator.visibility = View.VISIBLE
+        toolCallStatus.text = getString(R.string.chat_thinking)
 
         sendJob = viewLifecycleOwner.lifecycleScope.launch {
             val statusJob = launch {
@@ -429,7 +434,7 @@ class ChatFragment : Fragment() {
                 Toast.makeText(requireContext(), e.message ?: getString(R.string.chat_send), Toast.LENGTH_LONG).show()
             } finally {
                 statusJob.cancel()
-                toolCallStatus.visibility = View.GONE
+                thinkingIndicator.visibility = View.GONE
                 sendButton.isEnabled = true
             }
         }
@@ -453,13 +458,13 @@ class ChatFragment : Fragment() {
         (requireActivity() as MainActivity).navigateToDrawerItem(resolvedId)
     }
 
-    /** [ConversationEntity] rows for [listContainer] (R15). */
+    /** [ConversationWithPreview] rows for [listContainer] (R15, buelltune-1vt). */
     private class ConversationAdapter(
         private val onOpen: (ConversationEntity) -> Unit,
         private val onDelete: (ConversationEntity) -> Unit,
     ) : RecyclerView.Adapter<ConversationAdapter.ViewHolder>() {
 
-        private var items: List<ConversationEntity> = emptyList()
+        private var items: List<ConversationWithPreview> = emptyList()
 
         // NotifyDataSetChanged: conversation lists are small (rider-created,
         // not paginated) and Room's Flow already re-delivers the full list on
@@ -467,7 +472,7 @@ class ChatFragment : Fragment() {
         // saves here. Mirrored, identically justified, in
         // ChatMessageAdapter.submitList below.
         @Suppress("NotifyDataSetChanged")
-        fun submitList(list: List<ConversationEntity>) {
+        fun submitList(list: List<ConversationWithPreview>) {
             items = list
             notifyDataSetChanged()
         }
@@ -488,25 +493,46 @@ class ChatFragment : Fragment() {
             private val subtitle: TextView = view.findViewById(R.id.conversationItemSubtitle)
             private val delete: Button = view.findViewById(R.id.conversationItemDelete)
 
-            fun bind(conversation: ConversationEntity, onOpen: (ConversationEntity) -> Unit, onDelete: (ConversationEntity) -> Unit) {
-                title.text = conversation.title
-                subtitle.text = if (conversation.modelId.isBlank() || conversation.modelId == "default") {
+            /**
+             * buelltune-1vt: the row's headline is the first user message
+             * (truncated), not [ConversationEntity.title] - that field is
+             * only ever a creation-time date/time label (see
+             * [ChatFragment.createConversationEntity]), unhelpful for
+             * telling two past conversations apart at a glance. A brand-new
+             * conversation with no turns yet (no [ConversationWithPreview.preview])
+             * falls back to it. The date moves to the subtitle, alongside
+             * provider/model.
+             */
+            fun bind(item: ConversationWithPreview, onOpen: (ConversationEntity) -> Unit, onDelete: (ConversationEntity) -> Unit) {
+                val conversation = item.conversation
+                val preview = item.preview?.trim()?.takeIf { it.isNotEmpty() }
+                title.text = preview?.let(::truncatePreview) ?: conversation.title
+
+                val modelLabel = if (conversation.modelId.isBlank() || conversation.modelId == "default") {
                     conversation.providerId
                 } else {
                     "${conversation.providerId} \u00b7 ${conversation.modelId}"
                 }
+                val dateLabel = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(conversation.createdAt))
+                subtitle.text = "$dateLabel \u00b7 $modelLabel"
+
                 itemView.setOnClickListener { onOpen(conversation) }
                 delete.setOnClickListener { onDelete(conversation) }
             }
         }
     }
 
-    /** [ChatMessageEntity] rows for [conversationContainer]'s transcript (R19). */
+    /** [ChatMessageEntity] rows for [conversationContainer]'s transcript (R19, buelltune-7ls). */
     private class ChatMessageAdapter(
         private val onSuggestionTapped: (String) -> Unit,
     ) : RecyclerView.Adapter<ChatMessageAdapter.ViewHolder>() {
 
         private var items: List<ChatMessageEntity> = emptyList()
+
+        // buelltune-7ls: one Markwon instance per adapter (parsing/rendering
+        // is not free), built lazily against the RecyclerView's own context
+        // the first time a ViewHolder is created - never per bind.
+        private var markwon: Markwon? = null
 
         @Suppress("NotifyDataSetChanged")
         fun submitList(list: List<ChatMessageEntity>) {
@@ -516,7 +542,11 @@ class ChatFragment : Fragment() {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val view = LayoutInflater.from(parent.context).inflate(R.layout.chat_message_item, parent, false)
-            return ViewHolder(view)
+            val resolvedMarkwon = markwon ?: Markwon.builder(parent.context.applicationContext)
+                .usePlugin(TablePlugin.create(parent.context.applicationContext))
+                .build()
+                .also { markwon = it }
+            return ViewHolder(view, resolvedMarkwon)
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -525,7 +555,7 @@ class ChatFragment : Fragment() {
 
         override fun getItemCount(): Int = items.size
 
-        class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        class ViewHolder(view: View, private val markwon: Markwon) : RecyclerView.ViewHolder(view) {
             private val bubble: LinearLayout = view.findViewById(R.id.messageBubble)
             private val text: TextView = view.findViewById(R.id.messageText)
             private val suggestion: TextView = view.findViewById(R.id.suggestionCard)
@@ -541,12 +571,20 @@ class ChatFragment : Fragment() {
              * `getIdentifier` (DiscouragedApi, suppressed) is required for the
              * same reason as [ChatFragment.navigateToSuggestion]: `screenId` is
              * an LLM-produced string, never a compile-time-known `R.id`.
+             *
+             * buelltune-7ls: only an assistant row's [ChatMessageEntity.content]
+             * is rendered as markdown - a rider's own typed [text] is shown
+             * verbatim, never reinterpreted as markdown syntax.
              */
             @Suppress("DiscouragedApi")
             fun bind(message: ChatMessageEntity, onSuggestionTapped: (String) -> Unit) {
-                text.text = message.content
-
                 val isUser = message.role == Role.USER.name
+                if (isUser) {
+                    text.text = message.content
+                } else {
+                    markwon.setMarkdown(text, message.content)
+                }
+
                 val density = bubble.resources.displayMetrics.density
                 val nearMargin = (8 * density).toInt()
                 val farMargin = (48 * density).toInt()
@@ -582,3 +620,7 @@ class ChatFragment : Fragment() {
         private const val TAG = "ChatFragment"
     }
 }
+
+/** buelltune-1vt: a conversation list row's first-user-message preview, short enough to fit [R.layout.chat_conversation_item]'s single-line title. */
+private fun truncatePreview(preview: String, maxLength: Int = 60): String =
+    if (preview.length <= maxLength) preview else preview.take(maxLength - 1).trimEnd() + "\u2026"

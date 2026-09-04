@@ -310,6 +310,7 @@
 	<string name="chat_send">Send</string>
 	<string name="chat_back">Back</string>
 	<string name="chat_tool_call_status">Reading ECM: %1$s</string>
+	<string name="chat_thinking">Thinking…</string>
 	<string name="chat_no_providers_configured">No AI providers are configured. Configure one first.</string>
 	<string name="chat_chip_health_check_label">Health check</string>
 	<string name="chat_chip_health_check_prompt">Give me a full health check: pull the ECM info, both current and stored error codes, the current AFV, battery voltage, and coolant temperature (CLT), then summarize what they mean for how my bike is running right now.</string>
