@@ -23,11 +23,17 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import biz.logicminds.buelltune.AppContainer
 import biz.logicminds.buelltune.AppPreferences
 import biz.logicminds.buelltune.R
 import biz.logicminds.buelltune.chat.OpenRouterOAuth
+import biz.logicminds.buelltune.chat.ProviderCredentials
+import biz.logicminds.buelltune.chat.ProviderId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -122,14 +128,43 @@ class LlmSettingsActivity : AppCompatActivity() {
         }
     }
 
-    /** Hosts `res/xml/llm_prefs.xml` -- one `EditTextPreference` per provider credential field, plus OpenRouter's OAuth sign-in row. */
+    /**
+     * Hosts `res/xml/llm_prefs.xml` -- one `EditTextPreference` per provider
+     * credential field, plus OpenRouter's OAuth sign-in row.
+     *
+     * buelltune-qoo: a key/base-URL `EditTextPreference` is otherwise just a
+     * text field -- nothing here previously checked that a pasted-in value
+     * was even well-formed, let alone that the provider actually accepted
+     * it, so a typo'd or revoked key surfaced only much later, mid-chat, as
+     * an opaque Koog exception. [bindKeyValidation] wires each credential
+     * field's `OnPreferenceChangeListener` to fire a real network call --
+     * [ChatRepository.listModels], the exact same "does this key actually
+     * work" query [ChatFragment]'s new-conversation model picker (R21)
+     * already relies on for live signal -- and reports the outcome as a
+     * Toast. The listener always returns `true`: verification is
+     * feedback-only and never blocks the field from saving, matching
+     * [AppPreferences.credentialsFor]'s "no app restart needed" contract --
+     * a slow/offline verification call must not stop the rider from typing
+     * and moving on.
+     *
+     * [ProviderId.KIMI_CODE] is deliberately excluded: per
+     * [ChatAgentFactory.listModels]'s own KDoc, that provider has no
+     * models-list endpoint at all, so its call always returns the same
+     * static [ChatAgentFactory.KIMI_CODE_MODELS] regardless of whether the
+     * key is any good -- wiring it up here would report a fake "verified"
+     * for a bad key, worse than no check at all.
+     */
     class LlmPreferenceFragment : PreferenceFragmentCompat() {
+
+        private val chatRepository by lazy { AppContainer.from(requireContext()).chatRepository }
+
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.llm_prefs, rootKey)
             findPreference<Preference>("llm_openrouter_oauth_signin")?.setOnPreferenceClickListener {
                 startOpenRouterOAuth()
                 true
             }
+            bindKeyValidation()
         }
 
         private fun startOpenRouterOAuth() {
@@ -138,6 +173,80 @@ class LlmSettingsActivity : AppCompatActivity() {
             AppPreferences.saveOpenRouterOAuthVerifier(context, codeVerifier)
             val authUrl = OpenRouterOAuth.buildAuthUrl(OpenRouterOAuth.codeChallenge(codeVerifier))
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(authUrl)))
+        }
+
+        /**
+         * One field per provider drives verification: the API key for every
+         * key-based provider, [AppPreferences.ollamaBaseUrl] for Ollama
+         * (which has no key at all, R11). A provider whose credentials span
+         * two fields (OpenAI/Kimi's optional custom base URL) is verified
+         * using the just-typed key plus whatever base URL is currently
+         * saved -- editing the base URL alone doesn't retrigger verification,
+         * a deliberate, minimal scope: base URL is an optional override, the
+         * key is what "adding a provider key" (buelltune-qoo's title) means.
+         */
+        private fun bindKeyValidation() {
+            val context = requireContext()
+            bindKeyPreference("llm_anthropic_key") { key -> validate(ProviderId.ANTHROPIC, ProviderCredentials(apiKey = key)) }
+            bindKeyPreference("llm_openai_key") { key ->
+                validate(ProviderId.OPENAI, ProviderCredentials(apiKey = key, baseUrl = AppPreferences.openAiBaseUrl(context)))
+            }
+            bindKeyPreference("llm_google_key") { key -> validate(ProviderId.GOOGLE, ProviderCredentials(apiKey = key)) }
+            bindKeyPreference("llm_deepseek_key") { key -> validate(ProviderId.DEEPSEEK, ProviderCredentials(apiKey = key)) }
+            bindKeyPreference("llm_openrouter_key") { key -> validate(ProviderId.OPENROUTER, ProviderCredentials(apiKey = key)) }
+            bindKeyPreference("llm_ollama_base_url") { baseUrl -> validate(ProviderId.OLLAMA, ProviderCredentials(baseUrl = baseUrl)) }
+            bindKeyPreference("llm_kimi_key") { key ->
+                validate(ProviderId.KIMI, ProviderCredentials(apiKey = key, baseUrl = AppPreferences.kimiBaseUrl(context)))
+            }
+        }
+
+        /** Fires [onNonBlankValue] with the newly-typed value, skipping a blank one (the rider clearing the field to remove a credential, not adding one) -- never blocks the save either way. */
+        private fun bindKeyPreference(prefKey: String, onNonBlankValue: (String) -> Unit) {
+            findPreference<EditTextPreference>(prefKey)?.setOnPreferenceChangeListener { _, newValue ->
+                (newValue as? String)?.takeIf { it.isNotBlank() }?.let(onNonBlankValue)
+                true
+            }
+        }
+
+        /** Real network call ([ChatRepository.listModels]) reporting [providerId]'s [credentials] as good, bad, or unreachable via a Toast -- see this class's KDoc. */
+        private fun validate(providerId: ProviderId, credentials: ProviderCredentials) {
+            val context = requireContext()
+            val providerName = getString(providerCategoryStringRes(providerId))
+            viewLifecycleOwner.lifecycleScope.launch {
+                val result = try {
+                    val models = withContext(Dispatchers.IO) { chatRepository.listModels(providerId, credentials) }
+                    if (models.isNotEmpty()) Result.success(Unit) else Result.failure(IllegalStateException(getString(R.string.llm_key_verify_no_models_reason)))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(TAG, "Key verification failed for $providerId", e)
+                    Result.failure(e)
+                }
+                result.fold(
+                    onSuccess = {
+                        Toast.makeText(context, getString(R.string.llm_key_verify_success, providerName), Toast.LENGTH_SHORT).show()
+                    },
+                    onFailure = { e ->
+                        val reason = e.message ?: e::class.simpleName ?: e.toString()
+                        Toast.makeText(context, getString(R.string.llm_key_verify_failed, providerName, reason), Toast.LENGTH_LONG).show()
+                    },
+                )
+            }
+        }
+
+        private fun providerCategoryStringRes(providerId: ProviderId): Int = when (providerId) {
+            ProviderId.ANTHROPIC -> R.string.llm_anthropic_category
+            ProviderId.OPENAI -> R.string.llm_openai_category
+            ProviderId.GOOGLE -> R.string.llm_google_category
+            ProviderId.DEEPSEEK -> R.string.llm_deepseek_category
+            ProviderId.OPENROUTER -> R.string.llm_openrouter_category
+            ProviderId.OLLAMA -> R.string.llm_ollama_category
+            ProviderId.KIMI -> R.string.llm_kimi_category
+            ProviderId.KIMI_CODE -> R.string.llm_kimi_code_category
+        }
+
+        companion object {
+            private const val TAG = "LlmPreferenceFragment"
         }
     }
 

@@ -291,6 +291,9 @@
 	<string name="llm_openrouter_oauth_failed">OpenRouter sign-in did not complete. Try again.</string>
 	<string name="llm_openrouter_oauth_success">Signed in with OpenRouter.</string>
 	<string name="llm_openrouter_oauth_error">OpenRouter sign-in failed: %1$s</string>
+	<string name="llm_key_verify_success">%1$s key verified successfully.</string>
+	<string name="llm_key_verify_failed">Could not verify %1$s key: %2$s</string>
+	<string name="llm_key_verify_no_models_reason">no compatible models were found for this account</string>
 	<string name="chat_title">Chat</string>
 	<string name="chat_setup_prompt_message">Configure an AI provider to start chatting with your ECM.</string>
 	<string name="chat_setup_prompt_button">Configure AI Provider</string>

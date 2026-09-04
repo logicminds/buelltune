@@ -158,11 +158,28 @@ class ChatFragment : Fragment() {
         }
     }
 
+    /**
+     * buelltune-kjh: [showSetup]/[showConversationList] were previously
+     * chosen once, in `onViewCreated`, from [AppPreferences.configuredProviders]
+     * at that single point in time. The setup prompt's own "Configure AI
+     * Provider" button (see [wireListeners]) launches [LlmSettingsActivity]
+     * on top of this fragment - which stays alive, still showing
+     * [setupContainer], the whole time. Returning from a key just saved
+     * there re-enters here via `onResume`, not `onViewCreated`, so without
+     * this re-check the rider was stuck looking at a stale "configure a
+     * provider" prompt despite a provider now genuinely being configured.
+     * Scoped to only fire while [setupContainer] is the visible screen: an
+     * already-open conversation list/transcript must never be yanked back
+     * to setup by an unrelated resume.
+     */
     override fun onResume() {
         super.onResume()
         val activity = requireActivity() as MainActivity
         activity.setTitle(getString(R.string.chat_title))
         activity.updateConnectButton()
+        if (setupContainer.visibility == View.VISIBLE && AppPreferences.configuredProviders(requireContext()).isNotEmpty()) {
+            showConversationList()
+        }
     }
 
     private fun bindViews(view: View) {
