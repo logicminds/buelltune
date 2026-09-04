@@ -97,6 +97,10 @@ class ChatRepository(
     val conversations: Flow<List<ConversationEntity>>
         get() = database.conversationDao().observeAll()
 
+    /** [conversations] plus each row's first-user-turn preview (buelltune-1vt) - what [biz.logicminds.buelltune.fragments.ChatFragment]'s conversation list actually renders. */
+    val conversationPreviews: Flow<List<ConversationWithPreview>>
+        get() = database.conversationDao().observeAllWithPreview()
+
     /** One conversation's turns, oldest first, for the transcript UI (R12) - includes [ChatMessageEntity.toolCallsJson] for display. */
     fun messages(conversationId: Long): Flow<List<ChatMessageEntity>> =
         database.chatMessageDao().observeForConversation(conversationId)

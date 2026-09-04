@@ -145,25 +145,44 @@
 			android:paddingEnd="8dp"
 			tools:listitem="@layout/chat_message_item"/>
 
-		<!-- R12/R19: "Reading ECM: <tool>" indicator, visible only while a sendMessage call is in flight. -->
-		<TextView
-			android:id="@+id/toolCallStatus"
+		<!-- R12/R19/buelltune-n73/buelltune-tju: "Thinking…" while a send is
+			 in flight, then "Reading ECM: <tool>" for each tool call - a
+			 spinner keeps working state visible even between tool calls, not
+			 just while a named tool is running. -->
+		<LinearLayout
+			android:id="@+id/thinkingIndicator"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
+			android:orientation="horizontal"
+			android:gravity="center_vertical"
 			android:paddingStart="12dp"
 			android:paddingEnd="12dp"
 			android:paddingBottom="4dp"
-			android:textStyle="italic"
-			android:textAppearance="@style/TextAppearance.AppCompat.Small"
 			android:visibility="gone"
-			tools:text="Reading ECM: read_live_data"
-			tools:visibility="visible"/>
+			tools:visibility="visible">
+
+			<ProgressBar
+				android:layout_width="16dp"
+				android:layout_height="16dp"
+				android:layout_marginEnd="8dp"
+				android:indeterminate="true"/>
+
+			<TextView
+				android:id="@+id/toolCallStatus"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:textStyle="italic"
+				android:textAppearance="@style/TextAppearance.AppCompat.Small"
+				tools:text="Reading ECM: read_live_data"/>
+
+		</LinearLayout>
 
 		<LinearLayout
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:orientation="horizontal"
 			android:padding="8dp"
+			android:layout_marginBottom="@dimen/chat_fab_clearance"
 			android:gravity="center_vertical">
 
 			<EditText

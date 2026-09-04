@@ -202,6 +202,35 @@ class TestChatRepository {
         assertTrue(repository.messages(conversationId).first().isEmpty())
     }
 
+    @Test
+    fun conversationPreviews_reflectsTheFirstUserMessage_andFallsBackToNullBeforeAnyTurn() = runBlocking {
+        val repository = ChatRepository(database) { _, _, _, _, _ ->
+            ChatSender { _, _ -> ChatAgentResult(displayText = "Reply", suggestion = null, toolsCalled = emptyList()) }
+        }
+
+        val conversationId = repository.createConversation(
+            providerId = ProviderId.ANTHROPIC,
+            modelId = "claude-test",
+            title = "Chat 1/1/26",
+        )
+
+        // buelltune-1vt: a brand-new conversation with no turns yet has no preview.
+        assertEquals(null, repository.conversationPreviews.first().single { it.conversation.id == conversationId }.preview)
+
+        repository.sendMessage(conversationId, "Is my WOT fueling rich enough?", fakeEcmTools, ProviderCredentials(apiKey = "test-key"))
+
+        val preview = repository.conversationPreviews.first().single { it.conversation.id == conversationId }
+        assertEquals("Is my WOT fueling rich enough?", preview.preview)
+
+        // A second turn must not replace the preview with the newer message -
+        // it always reflects the conversation's first user turn.
+        repository.sendMessage(conversationId, "And the AFV?", fakeEcmTools, ProviderCredentials(apiKey = "test-key"))
+        assertEquals(
+            "Is my WOT fueling rich enough?",
+            repository.conversationPreviews.first().single { it.conversation.id == conversationId }.preview,
+        )
+    }
+
     private object FakeVariableProvider : VariableProvider() {
         override fun getRtVariableNames(ecm: String): Collection<String> = emptyList()
         override fun getRtVariable(ecm: String, name: String): Variable? = null

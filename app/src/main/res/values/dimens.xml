@@ -4,5 +4,10 @@
 	<dimen name="activity_horizontal_margin">16dp</dimen>
 	<dimen name="activity_vertical_margin">16dp</dimen>
 	<dimen name="fab_margin">16dp</dimen>
+	<!-- buelltune-tgp: standard FAB footprint (56dp button + 16dp margin on
+		 each side) so chat.xml's input row can reserve exactly enough space
+		 to clear the always-visible connect FAB (app_bar_main.xml) instead
+		 of sitting underneath it. -->
+	<dimen name="chat_fab_clearance">88dp</dimen>
 	<dimen name="log_big_text">64sp</dimen>
 </resources>

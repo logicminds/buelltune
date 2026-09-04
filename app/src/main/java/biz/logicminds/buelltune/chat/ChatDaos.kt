@@ -18,15 +18,44 @@
 package biz.logicminds.buelltune.chat
 
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
+
+/**
+ * A [ConversationDao.observeAllWithPreview] row (buelltune-1vt): [preview]
+ * is the conversation's first user-turn content, `null` for a brand-new
+ * conversation with no turns yet - the rider-browsable list's short summary,
+ * standing in for [ConversationEntity.title] alone (which is just a
+ * creation-time date/time label, see [ChatFragment.createConversationEntity]).
+ */
+data class ConversationWithPreview(
+    @Embedded val conversation: ConversationEntity,
+    val preview: String?,
+)
 
 @Dao
 interface ConversationDao {
     /** The rider-browsable conversation list (R15), newest first. */
     @Query("SELECT * FROM conversations ORDER BY createdAt DESC")
     fun observeAll(): Flow<List<ConversationEntity>>
+
+    /**
+     * [observeAll] plus each row's first user turn as [ConversationWithPreview.preview]
+     * (buelltune-1vt) - a correlated subquery rather than a second observed
+     * `Flow`/join in Kotlin, so a single emission always reflects a single,
+     * consistent snapshot of both tables.
+     */
+    @Query(
+        "SELECT c.*, (" +
+            "SELECT content FROM chat_messages m " +
+            "WHERE m.conversationId = c.id AND m.role = 'USER' " +
+            "ORDER BY m.id ASC LIMIT 1" +
+            ") AS preview " +
+            "FROM conversations c ORDER BY c.createdAt DESC",
+    )
+    fun observeAllWithPreview(): Flow<List<ConversationWithPreview>>
 
     @Insert
     suspend fun insert(conversation: ConversationEntity): Long
