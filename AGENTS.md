@@ -19,24 +19,24 @@ Mixed Java/Kotlin Android app: singleton hardware facade + background Service + 
 **Connect → Setup EEPROM → Poll runtime data → Log / Act**
 
 1. **Connect**: `MainActivity` (`app/src/main/java/biz/logicminds/buelltune/activities/MainActivity.java`) drives device selection (paired Bluetooth, BLE, or USB via `UsbSerialPort`) and calls `ECM.connect(...)`.
-2. **`ECM`** (`app/src/main/java/biz/logicminds/buelltune/ECM.java`) is a singleton facade abstracting the transport (BluetoothSocket / BLE `SerialSocket` / USB `UsbSerialPort` / TCP fallback via `PipedStreams`) and protocol (`STOCK` vs `FACTORY_RACE`, differing PDU ECM IDs `0x42`/`0x55`). Exposes `readRTData()`, `readErrors()`, `executeActiveTest()`, `readEEPROM()`, `burnEEPROM()`.
-3. **`PDU`** (`app/src/main/java/biz/logicminds/buelltune/PDU.java`) encodes/decodes the wire protocol: SOH/EOH/SOT/EOT framing, XOR checksum, factory methods (`getRequest`, `setRequest`, `commandRequest`).
-4. **EEPROM read/write**: `FetchTask`/`BurnTask` (`app/src/main/java/biz/logicminds/buelltune/task/`, `AsyncTask` subclasses of `ProgressDialogTask`) page through EEPROM via `PDU.getRequest`/`setRequest`; `EEPROM` (`EEPROM.java`) is a paginated byte array with dirty-page tracking, so burns can be optimized to only write changed pages.
-5. **Continuous polling**: `EcmDroidService` (foreground Service) runs a `ReaderThread` that loops on `ECM.readRTData()` at a configurable interval (50–5000ms), broadcasts a `REALTIME_DATA` intent, and streams `[timestamp][ECM header][data]` records to a log file when recording.
-6. **Variable definitions & scaling**: `Variable` (`Variable.java`) models a single runtime/EEPROM parameter (type, offset, scale/translate, format, unit) and does the raw-bytes → display-value conversion (`refreshValue()`). Definitions are looked up via `VariableProvider`/`BitSetProvider` interfaces, backed by `DatabaseVariableProvider`/`DatabaseBitSetProvider`, both caching results in a `HashMap`.
+2. **`ECM`** (`app/src/main/java/biz/logicminds/buelltune/ECM.kt`) is a singleton-style facade abstracting the transport (BluetoothSocket / BLE `SerialSocket` / USB `UsbSerialPort` / TCP fallback via `PipedStreams`) and protocol (`STOCK` vs `FACTORY_RACE`, differing PDU ECM IDs `0x42`/`0x55`). Exposes `readRTData()`, `readErrors()`, `executeActiveTest()`, `readEEPROM()`, `burnEEPROM()`.
+3. **`PDU`** (`app/src/main/java/biz/logicminds/buelltune/PDU.kt`) encodes/decodes the wire protocol: SOH/EOH/SOT/EOT framing, XOR checksum, factory methods (`getRequest`, `setRequest`, `commandRequest`).
+4. **EEPROM read/write**: `FetchTask`/`BurnTask` (`app/src/main/java/biz/logicminds/buelltune/task/`, `AsyncTask` subclasses of `ProgressDialogTask`) page through EEPROM via `PDU.getRequest`/`setRequest`; `EEPROM` (`EEPROM.kt`) is a paginated byte array with dirty-page tracking, so burns can be optimized to only write changed pages.
+5. **Continuous polling**: `EcmService` hosts `PollRecordLoop` (coroutine-based, `Dispatchers.IO`), which loops on `ECM.readRTData()` at a configurable interval (50–5000ms) and streams `[timestamp][ECM header][data]` records to a log file when recording; `LegacyBroadcastBridge` re-broadcasts `REALTIME_DATA`/`RECORDING_STARTED`/`RECORDING_STOPPED` intents for the Java fragments that still listen via `BroadcastReceiver`.
+6. **Variable definitions & scaling**: `Variable` (`Variable.kt`) models a single runtime/EEPROM parameter (type, offset, scale/translate, format, unit) and does the raw-bytes → display-value conversion (`refreshValue()`). Definitions are looked up via `VariableProvider`/`BitSetProvider` interfaces, backed by `DatabaseVariableProvider`/`DatabaseBitSetProvider`, both caching results in a `HashMap`.
 7. **Logging**: recorded binary logs can be converted to MegaLogViewer text format via `Bin2MslConverter` (`app/src/main/java/biz/logicminds/buelltune/util/`).
 
 ### Bundled ECM definitions database
 
-The app ships a gzip-compressed SQLite database, `app/src/main/assets/buelltune.db.gz`, sourced from ecmspy.com MySQL dumps. `DBHelper` (`SQLiteOpenHelper`) extracts/decompresses it into the app's private DB directory on first launch or `DB_VERSION` bump, invoked from `EcmDroidApp.onCreate()`. Schema tables: `eeprom`, `pages`, `rtoffsets`, `eeoffsets`, `names`, `bits`. All variable/bitset/EEPROM-layout lookups (`DatabaseVariableProvider`, `DatabaseBitSetProvider`, `EEPROM.get()`) run raw SQL against this DB.
+The app ships a gzip-compressed SQLite database, `app/src/main/assets/buelltune.db.gz`, sourced from ecmspy.com MySQL dumps. Room opens it directly via `createFromAsset` (`EcmDefinitionsDatabase`, `@Database(version = N)`) and compares the asset's `PRAGMA user_version` against that version on first query — there is no `DBHelper`/`DB_VERSION` extraction step. Schema tables: `eeprom`, `pages`, `rtoffsets`, `eeoffsets`, `names`, `bits`. All variable/bitset/EEPROM-layout lookups (`DatabaseVariableProvider`, `DatabaseBitSetProvider`, `EEPROM.get()`) run through the Room DAOs against this DB.
 
-Updating the bundled DB (see `README.db`): apply an ecmspy.com MySQL backup → run `scripts/mysql2sqlite.sh` (awk-based MySQL-dump → SQLite converter) → strip column comments → build the sqlite file → gzip it into `app/src/main/assets/buelltune.db.gz` → bump `DB_VERSION` in `DBHelper.java` so devices re-extract it.
+Updating the bundled DB (see `README.db`): apply an ecmspy.com MySQL backup → run `scripts/mysql2sqlite.sh` (awk-based MySQL-dump → SQLite converter) → strip column comments → build the sqlite file → set `PRAGMA user_version` → gzip it into `app/src/main/assets/buelltune.db.gz` → bump `version` in `EcmDefinitionsDatabase`'s `@Database(...)` to match.
 
 ## Key Directories
 
 | Path | Purpose |
 |---|---|
-| `app/src/main/java/biz/logicminds/buelltune/` | Core domain: `ECM`, `PDU`, `Variable`, `EEPROM`, `Error`, `DBHelper`, `VariableProvider`/`BitSetProvider` + DB-backed impls, `Constants` (500+ ECM variable name constants, `DataSource` enum), `Utils`, `ColorMap`, list adapters |
+| `app/src/main/java/biz/logicminds/buelltune/` | Core domain: `ECM`, `PDU`, `Variable`, `EEPROM`, `Error`, `VariableProvider`/`BitSetProvider` + DB-backed impls, `AppContainer` (DI composition root), `Constants` (500+ ECM variable name constants, `DataSource` enum), `Utils`, `ColorMap`, list adapters |
 | `app/src/main/java/biz/logicminds/buelltune/activities/` | `MainActivity` (launcher, drawer nav, connection UI), `PrefsActivity` (settings), `AboutActivity` |
 | `app/src/main/java/biz/logicminds/buelltune/fragments/` | One fragment per drawer tab: `MainFragment` (info), `TroubleCodeFragment`, `ActiveTestsFragment`, `DataChannelFragment`, `SetupFragment`, `LogFragment`, `EEPROMFragment`, `TorqueValuesFragment`, `CellEditorDialogFragment` |
 | `app/src/main/java/biz/logicminds/buelltune/task/` | `AsyncTask` I/O: `ProgressDialogTask` (base, modal progress + orientation lock), `FetchTask`, `BurnTask` |
@@ -89,12 +89,12 @@ Hardware-free ECM simulator: `third_party/ecmsim` is a pinned git submodule of `
 
 ## Important Files
 
-- `app/src/main/java/biz/logicminds/buelltune/EcmDroidApp.java` — `Application` subclass; triggers DB extraction on startup.
-- `app/src/main/java/biz/logicminds/buelltune/EcmDroidService.java` — foreground Service, entry point for continuous polling/recording.
+- `app/src/main/java/biz/logicminds/buelltune/EcmDroidApp.java` — `Application` subclass; builds the `AppContainer` DI composition root on startup.
+- `app/src/main/java/biz/logicminds/buelltune/service/EcmService.kt` — foreground Service hosting `PollRecordLoop`; entry point for continuous polling/recording.
 - `app/src/main/java/biz/logicminds/buelltune/activities/MainActivity.java` — launcher `Activity`, drawer navigation host.
-- `app/src/main/java/biz/logicminds/buelltune/ECM.java`, `PDU.java` — hardware/protocol core; read these before touching comms.
-- `app/src/main/java/biz/logicminds/buelltune/DBHelper.java` — bundled-DB lifecycle; bump `DB_VERSION` when `buelltune.db.gz` changes.
-- `app/src/main/java/biz/logicminds/buelltune/Constants.java` — canonical ECM variable name constants and `DataSource` enum.
+- `app/src/main/java/biz/logicminds/buelltune/ECM.kt`, `PDU.kt` — hardware/protocol core; read these before touching comms.
+- `app/src/main/java/biz/logicminds/buelltune/data/EcmDefinitionsDatabase.kt` — bundled-DB lifecycle (Room, `createFromAsset`); bump `@Database(version = ...)` when `buelltune.db.gz` changes.
+- `app/src/main/java/biz/logicminds/buelltune/Constants.kt` — canonical ECM variable name constants and `DataSource` enum.
 - `app/src/main/AndroidManifest.xml` — component registration, permissions (`BLUETOOTH_SCAN`/`CONNECT`, `ACCESS_FINE_LOCATION`, `POST_NOTIFICATIONS`), USB intent filter.
 - `app/build.gradle.kts`, `gradle/libs.versions.toml` — module config and version catalog; edit these together when bumping deps.
 - `scripts/mysql2sqlite.sh` — DB-conversion tooling (see `README.db`).
@@ -200,3 +200,16 @@ bd prime                # Refresh Beads context
 
 **Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
 <!-- END BEADS CODEX SETUP -->
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
