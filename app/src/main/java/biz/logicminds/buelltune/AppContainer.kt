@@ -18,6 +18,10 @@
 package biz.logicminds.buelltune
 
 import android.content.Context
+import biz.logicminds.buelltune.chat.ChatAgentFactory
+import biz.logicminds.buelltune.chat.ChatDatabase
+import biz.logicminds.buelltune.chat.ChatRepository
+import biz.logicminds.buelltune.chat.EcmTools
 import biz.logicminds.buelltune.data.EcmDefinitionsDatabase
 
 /**
@@ -49,6 +53,14 @@ class AppContainer(context: Context) {
     val bitSetProvider: BitSetProvider by lazy { DatabaseBitSetProvider(database) }
 
     val ecm: ECM by lazy { ECM(variableProvider, bitSetProvider, definitionsProvider, appContext) }
+
+    val chatDatabase: ChatDatabase by lazy { ChatDatabase.getInstance(appContext) }
+
+    val ecmTools: EcmTools by lazy { EcmTools(ecm, variableProvider, definitionsProvider) }
+
+    val chatAgentFactory: ChatAgentFactory by lazy { ChatAgentFactory() }
+
+    val chatRepository: ChatRepository by lazy { ChatRepository(chatDatabase, chatAgentFactory) }
 
     companion object {
         /** Resolve the process-wide container from any [Context] (KTD5's legacy `getInstance(Context)` facades). */

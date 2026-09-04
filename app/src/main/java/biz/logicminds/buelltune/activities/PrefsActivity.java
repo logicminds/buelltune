@@ -70,6 +70,12 @@ public class PrefsActivity extends PreferenceActivity implements OnPreferenceCha
 			startActivityForResult(intent, STORAGE_LOCATION);
 			return true;
 		});
+
+		Preference aiChatProviders = findPreference("ai_chat_providers");
+		aiChatProviders.setOnPreferenceClickListener(preference -> {
+			startActivity(new Intent(this, LlmSettingsActivity.class));
+			return true;
+		});
 	}
 
 	@Override

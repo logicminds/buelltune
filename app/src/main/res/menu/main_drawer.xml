@@ -32,6 +32,9 @@
 			android:icon="@drawable/ic_eeprom"
 			android:title="@string/title_activity_eeprom"/>
 		<item
+			android:id="@+id/nav_chat"
+			android:title="@string/chat_title"/>
+		<item
 			android:id="@+id/nav_torque"
 			android:icon="@drawable/ic_torque"
 			android:title="@string/torque_values"/>

@@ -151,16 +151,32 @@ jobs:
           target: google_apis
           profile: pixel_6
           disable-animations: true
+          # The action's `cores` input defaults to 2 regardless of AVD
+          # profile, and `ram-size` is unset (system-image default) - too
+          # tight for the heavier API 34 google_apis image (more bundled
+          # Google system apps/services than API 26) to finish settling
+          # system UI quickly on a shared CI runner. Under-resourcing here,
+          # not a logic bug, is what makes the single-shot wake sequence
+          # below unreliable specifically on API 34.
+          cores: 4
+          ram-size: 4096M
           # Headless CI emulators can boot with the screen off/locked, which
           # leaves every window permanently without focus and fails every
           # Espresso assertion with RootViewWithoutFocusException (a known
           # reactivecircus/android-emulator-runner Linux-runner issue, not
-          # an app bug). Waking the screen, dismissing the keyguard, and
-          # disabling the screen-off timeout before the test run fixes it.
+          # an app bug). A single wake/dismiss-keyguard/menu-key pass right
+          # after boot isn't reliable on the heavier API 34 image - system
+          # UI can still be settling when it runs, so the keyguard silently
+          # re-arms. Re-issuing the same idempotent sequence several times
+          # with a short gap, rather than once, absorbs that race. The
+          # animation-scale settings are redundant with disable-animations
+          # above for the window/transition/animator scales it already
+          # covers, kept as an explicit, harmless belt-and-suspenders step.
           script: |
-            adb shell svc power stayon true
-            adb shell wm dismiss-keyguard
-            adb shell input keyevent 82
+            adb shell settings put global window_animation_scale 0
+            adb shell settings put global transition_animation_scale 0
+            adb shell settings put global animator_duration_scale 0
+            for i in 1 2 3 4 5; do adb shell svc power stayon true; adb shell wm dismiss-keyguard; adb shell input keyevent 82; sleep 2; done
             ./gradlew connectedDebugAndroidTest
 
       - name: Upload instrumented test report

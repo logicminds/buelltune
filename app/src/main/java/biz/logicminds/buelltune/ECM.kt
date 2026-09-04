@@ -341,6 +341,12 @@ class ECM(
     fun getEEPROM(): EEPROM? = eeprom
 
     /**
+     * Returns a reference to the currently connected transport, or null if
+     * [connect] has not been called yet.
+     */
+    fun getTransport(): EcmTransport? = transport
+
+    /**
      * Retrieve all current or historic (stored) error codes.
      *
      * @param type the type of error

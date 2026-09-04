@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The FrameLayout wrapper is intentional, not redundant (tools:ignore
+	 below): it is the only way to align a single wrap_content bubble child
+	 to the row's start (assistant) or end (user) edge, set per-row in
+	 ChatMessageAdapter.ViewHolder.bind - a flattened single-ViewGroup row
+	 cannot express per-row horizontal alignment inside RecyclerView. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+			 xmlns:tools="http://schemas.android.com/tools"
+			 android:layout_width="match_parent"
+			 android:layout_height="wrap_content"
+			 android:paddingTop="4dp"
+			 android:paddingBottom="4dp"
+			 tools:ignore="UselessParent">
+
+	<!-- Alignment (start/assistant vs end/user) and left/right margins are set
+		 programmatically per-row by ChatMessageAdapter based on role. -->
+	<LinearLayout
+		android:id="@+id/messageBubble"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_gravity="start"
+		android:orientation="vertical"
+		android:background="@drawable/chat_bubble_assistant"
+		android:padding="10dp">
+
+		<TextView
+			android:id="@+id/messageText"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:textAppearance="@style/TextAppearance.AppCompat.Medium"/>
+
+		<!-- Rendered only when the row's ChatMessageEntity carries a suggestionScreenId (R2, AE3, KTD8). -->
+		<TextView
+			android:id="@+id/suggestionCard"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="8dp"
+			android:paddingTop="6dp"
+			android:paddingBottom="6dp"
+			android:paddingStart="10dp"
+			android:paddingEnd="10dp"
+			android:textStyle="bold"
+			android:textColor="@color/colorPrimary"
+			android:visibility="gone"/>
+
+	</LinearLayout>
+
+</FrameLayout>

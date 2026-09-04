@@ -27,5 +27,10 @@
 	<color name="input_field_stroke">#CCCCCC</color>
 	<color name="troublecode_text">#1A1A1A</color>
 
+	<!-- ChatFragment message bubbles (chat_message_item.xml): light tint of
+	     the brand's telemetry-blue accent for user turns; assistant turns
+	     reuse drawable/roundedrectangle's neutral input-field chrome. -->
+	<color name="chat_bubble_user_background">#E0F7FF</color>
+
 	<color name="ic_launcher_background">@color/colorPrimaryDark</color>
 </resources>

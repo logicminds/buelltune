@@ -74,6 +74,7 @@ import biz.logicminds.buelltune.service.EcmService;
 import biz.logicminds.buelltune.R;
 import biz.logicminds.buelltune.Utils;
 import biz.logicminds.buelltune.fragments.ActiveTestsFragment;
+import biz.logicminds.buelltune.fragments.ChatFragment;
 import biz.logicminds.buelltune.fragments.DataChannelFragment;
 import biz.logicminds.buelltune.fragments.EEPROMFragment;
 import biz.logicminds.buelltune.fragments.LogFragment;
@@ -292,6 +293,20 @@ public class MainActivity extends AppCompatActivity
 		DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
 		drawer.closeDrawer(GravityCompat.START);
 
+		navigateToDrawerItem(id);
+		return true;
+	}
+
+	/**
+	 * One consolidated entry point for both drawer-navigation shapes: the
+	 * torque/settings/about screens that launch a separate {@link Activity}
+	 * via {@link Intent}, and every other id, which {@link #switchToFragment(int)}
+	 * hosts in {@code content_frame}. Public so a {@code ChatFragment}
+	 * suggestion-card tap (KTD8) can resolve a drawer-item id from its
+	 * {@code SuggestionCard.screenId} and reuse this exact branching without
+	 * duplicating it.
+	 */
+	public void navigateToDrawerItem(int id) {
 		if (id == R.id.nav_torque) {
 			Intent intent = new Intent(this, TorqueValuesFragment.class);
 			startActivity(intent);
@@ -305,11 +320,35 @@ public class MainActivity extends AppCompatActivity
 			currentFragment = id;
 			switchToFragment(id);
 		}
-		return true;
 	}
 
-	private void switchToFragment(int id) {
+	/**
+	 * Hosts every legacy {@code android.app.Fragment} drawer screen through
+	 * {@link #getFragmentManager()}, plus {@code nav_chat}'s {@code ChatFragment}
+	 * through {@link #getSupportFragmentManager()} (KTD4/KTD9 - {@code ChatFragment}
+	 * extends {@code androidx.fragment.app.Fragment}, not the deprecated base
+	 * class every other screen uses). A legacy {@code android.app.FragmentManager}
+	 * transaction and an {@code androidx.fragment.app.FragmentManager} transaction
+	 * cannot coexist on {@code content_frame}: whichever manager's fragment is
+	 * NOT the one being added here is explicitly torn down first, in both
+	 * directions (chat -> legacy and legacy -> chat), so leaving chat for a
+	 * legacy screen reverses the teardown and vice versa.
+	 */
+	public void switchToFragment(int id) {
 		if (isTransactionSafe) {
+			if (id == R.id.nav_chat) {
+				Fragment legacyFragment = getFragmentManager().findFragmentById(R.id.content_frame);
+				if (legacyFragment != null) {
+					getFragmentManager().beginTransaction().remove(legacyFragment).commit();
+				}
+				getSupportFragmentManager().beginTransaction()
+						.replace(R.id.content_frame, new ChatFragment())
+						.commit();
+				isTransactionPending = false;
+				updateConnectButton();
+				return;
+			}
+
 			Fragment fragment = null;
 			if (id == R.id.nav_info) {
 				fragment = new MainFragment();
@@ -329,6 +368,10 @@ public class MainActivity extends AppCompatActivity
 			FragmentManager mgr = getFragmentManager();
 			if (fragment != null) {
 				Log.d(TAG, "Switching to fragment id " + id);
+				androidx.fragment.app.Fragment chatFragment = getSupportFragmentManager().findFragmentById(R.id.content_frame);
+				if (chatFragment != null) {
+					getSupportFragmentManager().beginTransaction().remove(chatFragment).commit();
+				}
 				mgr.beginTransaction()
 						.replace(R.id.content_frame, fragment)
 						.commit();
@@ -433,6 +476,15 @@ public class MainActivity extends AppCompatActivity
 		} else if ("BLE".equals(connectionType)) {
 			fab.hide();
 			Fragment fragment = new DevicesFragment();
+			// KTD9: this bypasses switchToFragment's own androidx-vs-legacy
+			// teardown (the BLE device picker is reached directly from the
+			// connect FAB, which is visible on every drawer tab including
+			// Chat) - tear down any ChatFragment occupying content_frame
+			// first, exactly like switchToFragment's legacy branch does.
+			androidx.fragment.app.Fragment chatFragment = getSupportFragmentManager().findFragmentById(R.id.content_frame);
+			if (chatFragment != null) {
+				getSupportFragmentManager().beginTransaction().remove(chatFragment).commit();
+			}
 			getFragmentManager().beginTransaction().replace(R.id.content_frame, fragment, "devices").addToBackStack("blescan").commit();
 		} else if ("COM".equals(connectionType)) {
 			findCOMDevice();

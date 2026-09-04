@@ -1,6 +1,6 @@
 [versions]
-agp = "9.2.1"
-kotlin = "2.2.10"
+agp = "9.4.0"
+kotlin = "2.4.10"
 ksp = "2.3.11"
 junit = "4.13.2"
 junitExt = "1.3.0"
@@ -13,9 +13,14 @@ documentfile = "1.1.0"
 usbSerial =  "3.10.0"
 room = "2.8.4"
 coroutines = "1.11.0"
-composeBom = "2026.02.01"
+composeBom = "2026.08.00"
 mockito = "5.18.0"
 sqliteJdbc = "3.53.4.0"
+koog = "1.2.0"
+koogBeta = "1.2.0-beta"
+preference = "1.2.1"
+recyclerview = "1.4.0"
+kotlinxSerialization = "1.11.0"
 
 [libraries]
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
@@ -46,8 +51,17 @@ compose-navigation = { group = "androidx.navigation", name = "navigation-compose
 compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 sqlite-jdbc = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqliteJdbc" }
+koog-agents = { group = "ai.koog", name = "koog-agents", version.ref = "koog" }
+koog-openrouter-client = { group = "ai.koog", name = "prompt-executor-openrouter-client", version.ref = "koog" }
+koog-deepseek-client = { group = "ai.koog", name = "prompt-executor-deepseek-client", version.ref = "koogBeta" }
+koog-google-client = { group = "ai.koog", name = "prompt-executor-google-client", version.ref = "koogBeta" }
+koog-http-client-ktor = { group = "ai.koog", name = "http-client-ktor", version.ref = "koog" }
+preference-ktx = { group = "androidx.preference", name = "preference-ktx", version.ref = "preference" }
+recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

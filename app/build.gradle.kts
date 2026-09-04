@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.ksp)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -28,7 +29,7 @@ android {
         versionCode = 2
         versionName = "0.1.1"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -52,7 +53,7 @@ android {
         buildConfig = true
         compose = true
     }
-    compileSdk = 36
+    compileSdk = 37
     testOptions {
         unitTests {
             isReturnDefaultValues = true
@@ -101,6 +102,25 @@ dependencies {
     implementation(libs.drawerlayout)
     implementation(libs.usbserial)
     implementation(libs.documentfile)
+    implementation(libs.koog.agents)
+    // koog-agents' own umbrella POM pulls stable Anthropic/OpenAI/Ollama/Bedrock
+    // clients but not OpenRouter/DeepSeek/Google (KD4): each is a separate
+    // publishable artifact on the same 1.2.0 release train, added explicitly.
+    implementation(libs.koog.openrouter.client)
+    implementation(libs.koog.deepseek.client)
+    implementation(libs.koog.google.client)
+    // Koog resolves its HTTP client engine via a runtime ServiceLoader-style
+    // lookup, not a compile-time default -- without this, every provider
+    // client throws IllegalStateException("No KoogHttpClient.Factory
+    // provider found on the runtime classpath...") the first time it's
+    // actually used. Found via manual smoke testing against ecmsimRun (a
+    // real device/emulator run), not caught by any unit/instrumented test
+    // since U6's agentic-loop tests use a fake PromptExecutor that never
+    // exercises a real provider client's HTTP construction path.
+    implementation(libs.koog.http.client.ktor)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.preference.ktx)
+    implementation(libs.recyclerview)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)

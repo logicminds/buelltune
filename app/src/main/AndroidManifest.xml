@@ -50,6 +50,22 @@
             android:label="@string/preferences"
             android:exported="false"/>
         <activity
+            android:name=".activities.LlmSettingsActivity"
+            android:label="@string/llm_settings_title"
+            android:launchMode="singleTask"
+            android:exported="true">
+            <!-- OpenRouterOAuth.CALLBACK_URL: OAuth PKCE redirect target. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="biz.logicminds.buelltune"
+                    android:host="oauth"
+                    android:pathPrefix="/openrouter" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".fragments.TorqueValuesFragment"
             android:label="Torque Values" >
         </activity>

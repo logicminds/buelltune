@@ -27,6 +27,7 @@ For end-user documentation, see [`USER_GUIDE.md`](USER_GUIDE.md).
 13. [Testing](#13-testing)
 14. [Code Conventions](#14-code-conventions)
 15. [Common Pitfalls](#15-common-pitfalls)
+16. [Chat Architecture and Tool Layer](#16-chat-architecture-and-tool-layer)
 
 ---
 
@@ -757,3 +758,190 @@ is built automatically if missing (same JDK 21+ requirement as
 - **Un-cached DB lookups on the polling hot path** — anything called from
   `EcmDroidService.ReaderThread` runs up to 20×/second (50 ms interval);
   always route new variable/bitset lookups through the provider caches.
+
+## 16. Chat Architecture and Tool Layer
+
+The Chat drawer tab (`nav_chat`) is a read-only, ECM-grounded LLM chat
+built on [Koog](https://docs.koog.ai) (`ai.koog:koog-agents`). Every write,
+reset, and flash path stays exactly where it already was — the app's
+existing screens — and the chat feature can never trigger one; that
+boundary is the single non-negotiable property of this whole subsystem.
+
+### Package layout
+
+All chat-feature source lives under `biz.logicminds.buelltune.chat`, a new
+package parallel to the existing `service`/`transport`/`data` domain
+subpackages, all Kotlin (this feature is a new screen, so the "don't port
+legacy screens to Kotlin" convention in §14 doesn't apply to it):
+
+```
+chat/
+├── EcmTools.kt              # read-only ECM facade, zero Koog import
+├── ToolResult.kt            # EcmTools' own sealed result type (Ok/NotConnected/EepromNotRead/Error)
+├── ProviderId.kt            # the 6 configurable LLM providers
+├── KoogEcmToolAdapter.kt    # wraps EcmTools as native Koog SimpleTool<Args>s
+├── ChatAgentFactory.kt      # resolves a provider's Koog PromptExecutor/LLModel
+├── ChatAgent.kt             # the capped, timed-out, tool-calling agentic loop
+├── SuggestionCard.kt        # [[SUGGEST:...]] marker parsing
+├── SystemPrompt.kt          # DDFI-2 domain-knowledge system prompt
+├── ChatEntities.kt          # Room entities: ConversationEntity, ChatMessageEntity
+├── ChatDaos.kt              # Room DAOs
+├── ChatDatabase.kt          # normal mutable Room DB, versioned independently of EcmDefinitionsDatabase (§8)
+└── ChatRepository.kt        # persistence + the one place that enforces the resume-replay rule
+```
+
+`fragments/ChatFragment.kt` (the UI) and `activities/LlmSettingsActivity.kt`
+(provider credential entry) are the only chat-feature files outside this
+package, following the existing per-screen fragment/activity placement
+convention (§10). `AppContainer` (§3) exposes `chatDatabase`, `ecmTools`,
+`chatAgentFactory`, and `chatRepository` as `by lazy` singletons, the same
+wiring pattern `EcmDefinitionsDatabase`/`ECM` already use.
+
+### `EcmTools`: the read-only safety boundary
+
+`EcmTools` (`chat/EcmTools.kt`) is a plain Kotlin facade over `ECM`/
+`EEPROM`/`VariableProvider` — it has **zero import of any `ai.koog.*`
+type**, and is fully unit-testable standalone (`TestEcmTools.kt`) without
+Koog, a simulator, or even a real transport. It exposes exactly six
+`suspend fun`s, each running on `Dispatchers.IO` and starting with an
+`ecm.isConnected()` check that short-circuits to `ToolResult.NotConnected`
+rather than throwing or blocking:
+
+| Tool | Backing call |
+|---|---|
+| `getEcmInfo()` | `ecm.getEEPROM()?.id`, `ecm.getVersion()`, `ecm.getCurrentProtocol()`, `ecm.getTransport()` |
+| `listLiveVariables()` | `variableProvider.getRtVariableNames`/`getRtVariable` — names + units only, no values |
+| `readLiveData(variables)` | one `ecm.readRTData()` call, then per-name `Variable.refreshValue` |
+| `readErrorCodes()` | `ecm.getErrors(ErrorType.CURRENT)` / `.getErrors(ErrorType.STORED)` |
+| `getEepromParameter(name)` | `ecm.getEEPROMValue(name)`, gated on `EEPROM.isEepromRead()` |
+| `getFuelMapRegion(cylinder, rpmRange, tpsRange)` | `ecm.getEEPROMValue("Tab_Fuel_Front"/"Tab_Fuel_Rear")`, sliced via `Variable.getIntValueAt(row, col)` |
+
+`readLiveData` calls `ecm.readRTData()` directly, once per call, rather
+than subscribing to `PollRecordLoop.runtimeData` (§9): the poll loop only
+runs while a screen has called `startReading()` or a recording is active,
+so there is no guarantee a warm snapshot exists when chat isn't also
+driving a live-data screen. This is safe to do concurrently with an active
+poll session because the underlying transport's `transact()` is
+mutex-serialized (§5) — a tool call simply queues behind any in-flight poll
+cycle.
+
+An unresolvable variable/parameter name or an out-of-range fuel-map
+request is a per-item `ToolResult.Error`, never a thrown exception —
+`readLiveData(["Foo", "AFV"])` returns one error entry for `"Foo"` and one
+normal entry for `"AFV"` in the same result, not a failed call. `getEeprom
+Parameter`/`getFuelMapRegion` distinguish "not connected" from "connected,
+but EEPROM was never fetched" (`ToolResult.EepromNotRead`) — the two are
+different rider-facing situations a chat agent needs to tell apart.
+`getFuelMapRegion` returns raw pulse-width cell values (0–255); it never
+applies the 58 µs-per-unit conversion — that's the system prompt's job
+(below), not a tool-result computation.
+
+### `KoogEcmToolAdapter`: the only file that imports both worlds
+
+`chat/KoogEcmToolAdapter.kt` wraps each of `EcmTools`' six methods as a
+native Koog `SimpleTool<Args>`, reusing the exact tool names (`get_ecm_info`,
+`list_live_variables`, `read_live_data`, `read_error_codes`,
+`get_eeprom_parameter`, `get_fuel_map_region`) so the model's own
+tool-call vocabulary matches what `list_live_variables`' result payload
+already returns. `ecmToolRegistry(tools: EcmTools): ToolRegistry` collects
+all six into one `ToolRegistry` — **this function's returned list is the
+entire read-only safety boundary artifact**: it contains exactly these six
+tools and nothing else, ever. No `burnEEPROM`, TPS/AFV reset, or active-test
+trigger is — or may become — reachable from here. Each wrapped call is
+wrapped in a 15 s `withTimeoutOrNull` (Koog has no native per-tool-call
+timeout as of 1.2.0) — note this bounds how long the chat turn *waits*
+before reporting a timeout back to the model, not a hard cancellation of
+an already in-flight `ECM` transaction: `ECM` bridges into its transport
+via `runBlocking(Dispatchers.IO) { ... }` (§9), a root `Job` fully
+decoupled from the calling coroutine's cancellation, so a genuinely hung
+transport call cannot actually be killed by this timeout — it can only be
+abandoned while the underlying thread eventually runs to completion or the
+transport itself fails. This is a pre-existing characteristic of `ECM`'s
+blocking-by-design contract (§6), not something the chat feature
+introduced or can safely change without touching core comms code.
+
+### The agentic loop
+
+`ChatAgentFactory.create(providerId, credentials, ecmTools, onToolCallStarting)`
+(`chat/ChatAgentFactory.kt`) resolves a Koog `PromptExecutor`/`LLModel`
+pair for one of six supported providers — Anthropic, OpenAI, Google,
+DeepSeek, OpenRouter, Ollama — and binds a `ChatAgent`. **AWS Bedrock is
+not offered**: Koog 1.2.0's `prompt-executor-bedrock-client-android`
+artifact compiles to a single internal `Stub` class on the Android target
+(verified by decompiling the resolved dependency) — no `BedrockLLMClient`
+exists to construct. Kimi/Moonshot is reached through the `OPENROUTER`
+provider rather than a dedicated client, since Koog does not name it as a
+first-class provider.
+
+`ChatAgent.send(userText, priorTurns)` (`chat/ChatAgent.kt`) builds a fresh
+`AIAgentConfig`-seeded Koog `AIAgent` per call, capped at 5 tool
+iterations (`maxAgentIterations`) and seeded with `priorTurns` via only
+`system`/`user`/`assistant` DSL calls — never a prior turn's tool_use/
+tool_result payload. Responses are non-streaming: `agent.run(userText)`
+returns one complete final string. Koog's tool-calling `AIAgent` loop has
+no verified simple streaming hook in 1.2.0 (`LLMClient.executeStreaming()`
+exists, but wiring it through a tool-calling loop needs advanced
+graph/functional-agent composition); the non-streaming path is the actual
+v1 implementation, not a placeholder. In-flight tool calls are observed via
+Koog's `handleEvents { onToolCallStarting { ... } }` feature, threaded
+through as a plain callback so `ChatFragment` can render a "Reading ECM:
+`<tool>`" indicator without constructing any Koog type itself.
+
+### Suggestion cards
+
+A write/reset/flash suggestion is never a tool call — the system prompt
+(`chat/SystemPrompt.kt`) instructs the model to end such an answer with a
+fenced `[[SUGGEST:<drawer-item-id>|<short action label>]]` line (e.g.
+`[[SUGGEST:nav_setup|Reset TPS zero]]`). `SuggestionCard.extractSuggestion`
+(`chat/SuggestionCard.kt`) strips the marker from the displayed text and
+parses it into a `SuggestionCard`; a missing/malformed marker degrades to
+plain text with no card rather than throwing. Whether `screenId` actually
+resolves to one of `main_drawer.xml`'s real ids is `ChatFragment`'s job
+(`resources.getIdentifier(screenId, "id", packageName)`, `0` on no match) —
+an unrecognized id renders as a non-clickable label, never navigates or
+crashes. Tapping a resolved card calls
+`MainActivity.navigateToDrawerItem(id)` — the same branching
+`onNavigationItemSelected` already uses for every drawer tap — which either
+starts an existing screen's `Activity` or calls the (now `public`)
+`switchToFragment(id)`. The app never pre-fills a value or performs the
+action itself; the rider always completes it manually on the named screen.
+
+### Hosting `ChatFragment`: two `FragmentManager`s, one `content_frame`
+
+`ChatFragment` extends `androidx.fragment.app.Fragment`, not the legacy
+`android.app.Fragment` every other drawer screen in §10 uses — this is a
+new screen, so the Kotlin-port restriction in §14 doesn't apply to it. It
+is hosted through `getSupportFragmentManager()`, while the other 10 screens
+stay on the legacy `getFragmentManager()`. Both managers can independently
+hold a fragment in `content_frame`, but they cannot coexist there without
+explicit teardown: `MainActivity.switchToFragment(int id)` removes
+whichever manager's fragment currently occupies `content_frame` before the
+other adds its replacement, in both directions (`nav_chat` tears down any
+legacy fragment first; every legacy case tears down `ChatFragment` first).
+The BLE device-picker flow (`connect()`'s `"BLE".equals(connectionType)`
+branch) mutates `content_frame` directly via the legacy manager, bypassing
+`switchToFragment` entirely — since the connect FAB is reachable from every
+drawer tab including Chat, that branch carries the identical
+ChatFragment-teardown check.
+
+### Conversation persistence and the resume-replay rule
+
+`ChatRepository` (`chat/ChatRepository.kt`) is the one place in the
+codebase that reconstructs a resumed conversation's model-bound turn list.
+`ConversationTurn` (`chat/ChatAgent.kt`) has only `role`/`content` fields —
+no field exists for a stored `ChatMessageEntity.toolCallsJson` payload — so
+it is structurally impossible to build a `ConversationTurn` that leaks a
+prior turn's tool-call data back into the model's context.
+`ChatRepository.sendMessage()` loads a conversation's full message history,
+maps only `.role`/`.content` into `ConversationTurn`s, and never reads
+`.toolCallsJson` (kept only for on-screen display) in that mapping. The
+practical effect: reopening a past conversation and asking the same
+state-dependent question again always triggers a fresh `EcmTools` call
+rather than reusing an answer from a stale snapshot. `ConversationEntity
+.providerId`/`.modelId` are set once at `createConversation` and never
+updated afterward — `ChatRepository` exposes no method that mutates either
+column. Provider credentials are never persisted to `ChatDatabase`
+(secrets don't belong alongside conversation text); `sendMessage` takes
+them as a parameter on every call, read fresh from `AppPreferences`
+immediately before sending, so a conversation resumed after a fresh app
+process start still works.
