@@ -870,10 +870,10 @@
     "semantic_hash": "145fe633aeed3c0f5c2a45b8ab88b146"
   },
   "app/src/main/java/biz/logicminds/buelltune/activities/LlmSettingsActivity.kt": {
-    "mtime": 1788538100.094958,
-    "seen": 1788538338.4733472,
-    "ast_hash": "17e5a1adc9cfb265e6231ccb91f55928",
-    "semantic_hash": ""
+    "mtime": 1788490539.0658345,
+    "seen": 1788537690.58602,
+    "ast_hash": "1278a135de4e9233640fb8d7946b9404",
+    "semantic_hash": "1278a135de4e9233640fb8d7946b9404"
   },
   "app/src/main/java/biz/logicminds/buelltune/chat/ChatAgent.kt": {
     "mtime": 1788498875.0240417,
@@ -954,10 +954,10 @@
     "semantic_hash": "d9104b4234e774aaec513ce131566b6f"
   },
   "app/src/main/java/biz/logicminds/buelltune/fragments/ChatFragment.kt": {
-    "mtime": 1788538062.6967611,
-    "seen": 1788538338.473357,
-    "ast_hash": "540d71747fab343769506e12a5eb7d2e",
-    "semantic_hash": ""
+    "mtime": 1788504069.8107438,
+    "seen": 1788537690.586028,
+    "ast_hash": "338fe1190975e16be7129ae449109e42",
+    "semantic_hash": "338fe1190975e16be7129ae449109e42"
   },
   "app/src/test/java/biz/logicminds/buelltune/TestEcmTools.kt": {
     "mtime": 1788462261.5901997,
