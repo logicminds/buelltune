@@ -25,6 +25,7 @@ import ai.koog.prompt.executor.clients.deepseek.DeepSeekLLMClient
 import ai.koog.prompt.executor.clients.deepseek.DeepSeekModels
 import ai.koog.prompt.executor.clients.google.GoogleLLMClient
 import ai.koog.prompt.executor.clients.google.GoogleModels
+import ai.koog.prompt.executor.clients.openai.OpenAIClientSettings
 import ai.koog.prompt.executor.clients.openai.OpenAILLMClient
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.clients.openrouter.OpenRouterLLMClient
@@ -33,6 +34,8 @@ import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.executor.ollama.client.OllamaClient
 import ai.koog.prompt.executor.ollama.client.OllamaModels
+import ai.koog.prompt.llm.LLMCapability
+import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -59,10 +62,41 @@ import io.ktor.client.engine.okhttp.OkHttp
 private val koogHttpClientFactory: KoogHttpClient.Factory =
     KtorKoogHttpClient.Factory(HttpClient(OkHttp))
 
+/** Moonshot AI's global OpenAI-protocol-compatible endpoint (platform.kimi.ai docs). */
+private const val KIMI_DEFAULT_BASE_URL = "https://api.moonshot.ai/v1"
+
+/**
+ * Koog 1.2.0 has no first-class Kimi/Moonshot client or model catalog
+ * (unlike OpenAI, Anthropic, etc.), so this is a hand-built [LLModel] for
+ * Moonshot's current flagship chat-completions model id, `kimi-k2.6`
+ * (confirmed against platform.kimi.ai's own Chat Completions API docs,
+ * which document Tool Use/function calling support - required for
+ * [EcmTools]). [LLMProvider.OpenAI] is deliberately reused as the
+ * capability/request-shaping profile: Moonshot's endpoint speaks the same
+ * OpenAI chat-completions wire protocol [OpenAILLMClient] already
+ * implements, it is not a mislabel of the actual model.
+ */
+private val KIMI_K2_MODEL = LLModel(
+    provider = LLMProvider.OpenAI,
+    id = "kimi-k2.6",
+    capabilities = listOf(
+        LLMCapability.Temperature,
+        LLMCapability.Tools,
+        LLMCapability.ToolChoice,
+        LLMCapability.Schema.JSON.Basic,
+    ),
+    contextLength = 262_144,
+    maxOutputTokens = 262_144,
+)
+
 /**
  * Credentials for the provider a conversation is bound to (KD5): [apiKey]
- * covers every provider but Ollama, [baseUrl] is Ollama's rider-reachable
- * server (R11 - no on-device inference).
+ * covers every provider but Ollama. [baseUrl] means different things per
+ * provider - Ollama's rider-reachable server (R11 - no on-device
+ * inference, required), or an optional override of an OpenAI-protocol
+ * client's default endpoint (OpenAI itself, or Kimi/Moonshot) so a rider
+ * can point at a compatible proxy/self-host or Moonshot's China-region
+ * endpoint without a dedicated provider entry per endpoint.
  */
 data class ProviderCredentials(
     val apiKey: String? = null,
@@ -106,8 +140,11 @@ class ChatAgentFactory {
         }
         ProviderId.OPENAI -> {
             val apiKey = requireApiKey(providerId, credentials)
+            val settings = credentials.baseUrl?.takeIf { it.isNotBlank() }
+                ?.let { OpenAIClientSettings(baseUrl = it) }
+                ?: OpenAIClientSettings()
             MultiLLMPromptExecutor(
-                OpenAILLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory),
+                OpenAILLMClient(apiKey = apiKey, settings = settings, httpClientFactory = koogHttpClientFactory),
             ) to OpenAIModels.Chat.GPT4o
         }
         ProviderId.GOOGLE -> {
@@ -123,7 +160,6 @@ class ChatAgentFactory {
             ) to DeepSeekModels.DeepSeekV4Flash
         }
         ProviderId.OPENROUTER -> {
-            // Also the Kimi/Moonshot path (KD4) - no special-casing needed.
             val apiKey = requireApiKey(providerId, credentials)
             MultiLLMPromptExecutor(
                 OpenRouterLLMClient(apiKey = apiKey, httpClientFactory = koogHttpClientFactory),
@@ -135,6 +171,23 @@ class ChatAgentFactory {
             MultiLLMPromptExecutor(
                 OllamaClient(httpClientFactory = koogHttpClientFactory, baseUrl = baseUrl),
             ) to OllamaModels.Meta.LLAMA_3_2
+        }
+        ProviderId.KIMI -> {
+            // Moonshot's own platform speaks the OpenAI chat-completions
+            // protocol (confirmed against platform.kimi.ai's docs), so the
+            // OpenAI client works unmodified pointed at its base URL - Koog
+            // has no first-class Kimi client/model catalog, hence the
+            // hand-built LLModel below (LLMProvider.OpenAI is the correct
+            // capability/request-shaping profile, not a mislabel).
+            val apiKey = requireApiKey(providerId, credentials)
+            val baseUrl = credentials.baseUrl?.takeIf { it.isNotBlank() } ?: KIMI_DEFAULT_BASE_URL
+            MultiLLMPromptExecutor(
+                OpenAILLMClient(
+                    apiKey = apiKey,
+                    settings = OpenAIClientSettings(baseUrl = baseUrl),
+                    httpClientFactory = koogHttpClientFactory,
+                ),
+            ) to KIMI_K2_MODEL
         }
     }
 

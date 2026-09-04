@@ -14,6 +14,14 @@
 		android:key="@string/prefs_conn_type"
 		android:title="@string/ecm_connection_type" />
 	<PreferenceCategory
+		android:key="ai_chat_category"
+		android:title="@string/chat_title">
+		<Preference
+			android:key="ai_chat_providers"
+			android:title="@string/llm_settings_title"
+			android:summary="@string/llm_settings_summary" />
+	</PreferenceCategory>
+	<PreferenceCategory
 		android:key="tcp_settings"
 		android:textColor="#DD2C00"
 		android:title="@string/tcp_settings"

@@ -4,43 +4,63 @@
 				  android:title="@string/llm_settings_title">
 	<PreferenceCategory
 		android:key="llm_anthropic_category"
-		android:title="@string/llm_anthropic_category">
+		android:title="@string/llm_anthropic_category"
+		android:icon="@drawable/ic_provider_anthropic">
 		<EditTextPreference
 			android:key="llm_anthropic_key"
+			android:icon="@drawable/ic_provider_anthropic"
 			android:inputType="textPassword"
 			android:title="@string/llm_anthropic_key_title"
 			app:useSimpleSummaryProvider="false" />
 	</PreferenceCategory>
 	<PreferenceCategory
 		android:key="llm_openai_category"
-		android:title="@string/llm_openai_category">
+		android:title="@string/llm_openai_category"
+		android:icon="@drawable/ic_provider_openai">
 		<EditTextPreference
 			android:key="llm_openai_key"
+			android:icon="@drawable/ic_provider_openai"
 			android:inputType="textPassword"
 			android:title="@string/llm_openai_key_title"
+			app:useSimpleSummaryProvider="false" />
+		<EditTextPreference
+			android:key="llm_openai_base_url"
+			android:inputType="textUri"
+			android:title="@string/llm_openai_base_url_title"
+			android:summary="@string/llm_openai_base_url_summary"
 			app:useSimpleSummaryProvider="false" />
 	</PreferenceCategory>
 	<PreferenceCategory
 		android:key="llm_google_category"
-		android:title="@string/llm_google_category">
+		android:title="@string/llm_google_category"
+		android:icon="@drawable/ic_provider_google">
 		<EditTextPreference
 			android:key="llm_google_key"
+			android:icon="@drawable/ic_provider_google"
 			android:inputType="textPassword"
 			android:title="@string/llm_google_key_title"
 			app:useSimpleSummaryProvider="false" />
 	</PreferenceCategory>
 	<PreferenceCategory
 		android:key="llm_deepseek_category"
-		android:title="@string/llm_deepseek_category">
+		android:title="@string/llm_deepseek_category"
+		android:icon="@drawable/ic_provider_deepseek">
 		<EditTextPreference
 			android:key="llm_deepseek_key"
+			android:icon="@drawable/ic_provider_deepseek"
 			android:inputType="textPassword"
 			android:title="@string/llm_deepseek_key_title"
 			app:useSimpleSummaryProvider="false" />
 	</PreferenceCategory>
 	<PreferenceCategory
 		android:key="llm_openrouter_category"
-		android:title="@string/llm_openrouter_category">
+		android:title="@string/llm_openrouter_category"
+		android:icon="@drawable/ic_provider_openrouter">
+		<Preference
+			android:key="llm_openrouter_oauth_signin"
+			android:icon="@drawable/ic_provider_openrouter"
+			android:title="@string/llm_openrouter_oauth_signin_title"
+			android:summary="@string/llm_openrouter_oauth_signin_summary" />
 		<EditTextPreference
 			android:key="llm_openrouter_key"
 			android:inputType="textPassword"
@@ -48,10 +68,29 @@
 			app:useSimpleSummaryProvider="false" />
 	</PreferenceCategory>
 	<PreferenceCategory
+		android:key="llm_kimi_category"
+		android:title="@string/llm_kimi_category"
+		android:icon="@drawable/ic_provider_kimi">
+		<EditTextPreference
+			android:key="llm_kimi_key"
+			android:icon="@drawable/ic_provider_kimi"
+			android:inputType="textPassword"
+			android:title="@string/llm_kimi_key_title"
+			app:useSimpleSummaryProvider="false" />
+		<EditTextPreference
+			android:key="llm_kimi_base_url"
+			android:inputType="textUri"
+			android:title="@string/llm_kimi_base_url_title"
+			android:summary="@string/llm_kimi_base_url_summary"
+			app:useSimpleSummaryProvider="false" />
+	</PreferenceCategory>
+	<PreferenceCategory
 		android:key="llm_ollama_category"
-		android:title="@string/llm_ollama_category">
+		android:title="@string/llm_ollama_category"
+		android:icon="@drawable/ic_provider_ollama">
 		<EditTextPreference
 			android:key="llm_ollama_base_url"
+			android:icon="@drawable/ic_provider_ollama"
 			android:inputType="textUri"
 			android:title="@string/llm_ollama_base_url_title" />
 	</PreferenceCategory>

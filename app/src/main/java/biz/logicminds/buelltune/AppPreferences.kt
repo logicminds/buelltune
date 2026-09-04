@@ -156,6 +156,16 @@ object AppPreferences {
     @JvmStatic
     fun openAiApiKey(context: Context): String? = defaultPrefs(context).getString("llm_openai_key", null)
 
+    /**
+     * Optional custom base URL for the OpenAI-protocol client, set via the
+     * `llm_openai_base_url` `EditTextPreference`; `null`/blank means the
+     * real OpenAI API. Lets a rider point the OpenAI provider slot at any
+     * OpenAI-compatible endpoint (self-hosted proxy, gateway, etc.)
+     * without a dedicated provider entry.
+     */
+    @JvmStatic
+    fun openAiBaseUrl(context: Context): String? = defaultPrefs(context).getString("llm_openai_base_url", null)
+
     /** Google (Gemini) API key, set via the `llm_google_key` `EditTextPreference`; `null` until configured. */
     @JvmStatic
     fun googleApiKey(context: Context): String? = defaultPrefs(context).getString("llm_google_key", null)
@@ -164,13 +174,27 @@ object AppPreferences {
     @JvmStatic
     fun deepSeekApiKey(context: Context): String? = defaultPrefs(context).getString("llm_deepseek_key", null)
 
-    /** OpenRouter API key, set via the `llm_openrouter_key` `EditTextPreference`; `null` until configured. Also the Kimi/Moonshot path (KD4). */
+    /** OpenRouter API key, set via the `llm_openrouter_key` `EditTextPreference` or the OAuth PKCE sign-in flow (both write this same key); `null` until configured. */
     @JvmStatic
     fun openRouterApiKey(context: Context): String? = defaultPrefs(context).getString("llm_openrouter_key", null)
 
     /** Rider-reachable Ollama server base URL, set via the `llm_ollama_base_url` `EditTextPreference`; `null` until configured. No on-device inference runs (R11). */
     @JvmStatic
     fun ollamaBaseUrl(context: Context): String? = defaultPrefs(context).getString("llm_ollama_base_url", null)
+
+    /** Moonshot AI (Kimi) API key, set via the `llm_kimi_key` `EditTextPreference`; `null` until configured. */
+    @JvmStatic
+    fun kimiApiKey(context: Context): String? = defaultPrefs(context).getString("llm_kimi_key", null)
+
+    /**
+     * Optional custom base URL for Kimi's OpenAI-protocol endpoint, set via
+     * the `llm_kimi_base_url` `EditTextPreference`; `null`/blank means
+     * Moonshot's default global endpoint (`https://api.moonshot.ai/v1`,
+     * applied in [biz.logicminds.buelltune.chat.ChatAgentFactory]). Lets a
+     * rider switch to Moonshot's China-region endpoint or a proxy.
+     */
+    @JvmStatic
+    fun kimiBaseUrl(context: Context): String? = defaultPrefs(context).getString("llm_kimi_base_url", null)
 
     /**
      * Providers with a non-blank credential set, in [ProviderId] declaration order. Ollama counts
@@ -188,6 +212,7 @@ object AppPreferences {
         if (!deepSeekApiKey(context).isNullOrBlank()) configured.add(ProviderId.DEEPSEEK)
         if (!openRouterApiKey(context).isNullOrBlank()) configured.add(ProviderId.OPENROUTER)
         if (!ollamaBaseUrl(context).isNullOrBlank()) configured.add(ProviderId.OLLAMA)
+        if (!kimiApiKey(context).isNullOrBlank()) configured.add(ProviderId.KIMI)
         return configured
     }
 
@@ -203,10 +228,40 @@ object AppPreferences {
     @JvmStatic
     fun credentialsFor(context: Context, providerId: ProviderId): ProviderCredentials = when (providerId) {
         ProviderId.ANTHROPIC -> ProviderCredentials(apiKey = anthropicApiKey(context))
-        ProviderId.OPENAI -> ProviderCredentials(apiKey = openAiApiKey(context))
+        ProviderId.OPENAI -> ProviderCredentials(apiKey = openAiApiKey(context), baseUrl = openAiBaseUrl(context))
         ProviderId.GOOGLE -> ProviderCredentials(apiKey = googleApiKey(context))
         ProviderId.DEEPSEEK -> ProviderCredentials(apiKey = deepSeekApiKey(context))
         ProviderId.OPENROUTER -> ProviderCredentials(apiKey = openRouterApiKey(context))
         ProviderId.OLLAMA -> ProviderCredentials(baseUrl = ollamaBaseUrl(context))
+        ProviderId.KIMI -> ProviderCredentials(apiKey = kimiApiKey(context), baseUrl = kimiBaseUrl(context))
+    }
+
+    // --- OpenRouter OAuth PKCE (biz.logicminds.buelltune.chat.OpenRouterOAuth) ---
+
+    /**
+     * Persists the PKCE code verifier while the rider is in the external
+     * browser completing OpenRouter's sign-in - an in-memory value would
+     * be lost if the OS reclaims [biz.logicminds.buelltune.activities.LlmSettingsActivity]
+     * while backgrounded, and the flow's own key-exchange step needs it
+     * again once the redirect delivers a `code`.
+     */
+    @JvmStatic
+    fun saveOpenRouterOAuthVerifier(context: Context, codeVerifier: String) {
+        defaultPrefs(context).edit().putString("llm_openrouter_oauth_verifier", codeVerifier).apply()
+    }
+
+    /** Reads back and clears the value [saveOpenRouterOAuthVerifier] stored - single-use, like the authorization code it pairs with. */
+    @JvmStatic
+    fun consumeOpenRouterOAuthVerifier(context: Context): String? {
+        val prefs = defaultPrefs(context)
+        val verifier = prefs.getString("llm_openrouter_oauth_verifier", null)
+        prefs.edit().remove("llm_openrouter_oauth_verifier").apply()
+        return verifier
+    }
+
+    /** Writes the API key OpenRouter's OAuth PKCE exchange returned into the same slot the manual `llm_openrouter_key` `EditTextPreference` uses - one credential, two ways to fill it in. */
+    @JvmStatic
+    fun setOpenRouterApiKey(context: Context, apiKey: String) {
+        defaultPrefs(context).edit().putString("llm_openrouter_key", apiKey).apply()
     }
 }

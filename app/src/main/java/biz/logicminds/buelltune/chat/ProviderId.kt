@@ -20,8 +20,13 @@ package biz.logicminds.buelltune.chat
 /**
  * The LLM providers the chat agent can be configured against (KD4): every
  * provider is available from v1, not "Anthropic first, others added later."
- * Kimi/Moonshot is reached through [OPENROUTER] rather than a dedicated
- * entry, since Koog does not name it as a first-class provider.
+ *
+ * [KIMI] talks to Moonshot AI's own OpenAI-protocol-compatible endpoint
+ * (`https://api.moonshot.ai/v1` by default, overridable) directly with a
+ * Moonshot API key - it no longer piggybacks on [OPENROUTER] the way an
+ * earlier revision of this enum did; Moonshot's own platform is the
+ * lower-latency, non-proxied path and lets a rider use a Kimi-specific key
+ * instead of an OpenRouter account.
  *
  * AWS Bedrock is deliberately excluded (KD4 correction, U5): Koog 1.2.0's
  * `prompt-executor-bedrock-client-android` artifact compiles to a single
@@ -39,4 +44,5 @@ enum class ProviderId {
     DEEPSEEK,
     OPENROUTER,
     OLLAMA,
+    KIMI,
 }

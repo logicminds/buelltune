@@ -55,12 +55,6 @@
 				android:textAppearance="@style/TextAppearance.AppCompat.Large"/>
 
 			<Button
-				android:id="@+id/manageProvidersButton"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:text="@string/chat_manage_providers_button"/>
-
-			<Button
 				android:id="@+id/newConversationButton"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"

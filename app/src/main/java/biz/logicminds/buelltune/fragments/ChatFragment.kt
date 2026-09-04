@@ -80,7 +80,6 @@ class ChatFragment : Fragment() {
     private lateinit var conversationContainer: View
 
     private lateinit var openSettingsButton: Button
-    private lateinit var manageProvidersButton: Button
     private lateinit var newConversationButton: Button
     private lateinit var noConversationsMessage: TextView
     private lateinit var conversationList: RecyclerView
@@ -168,7 +167,6 @@ class ChatFragment : Fragment() {
         conversationContainer = view.findViewById(R.id.conversationContainer)
 
         openSettingsButton = view.findViewById(R.id.openSettingsButton)
-        manageProvidersButton = view.findViewById(R.id.manageProvidersButton)
         newConversationButton = view.findViewById(R.id.newConversationButton)
         noConversationsMessage = view.findViewById(R.id.noConversationsMessage)
         conversationList = view.findViewById(R.id.conversationList)
@@ -184,9 +182,6 @@ class ChatFragment : Fragment() {
 
     private fun wireListeners() {
         openSettingsButton.setOnClickListener {
-            startActivity(Intent(requireContext(), LlmSettingsActivity::class.java))
-        }
-        manageProvidersButton.setOnClickListener {
             startActivity(Intent(requireContext(), LlmSettingsActivity::class.java))
         }
         newConversationButton.setOnClickListener { showNewConversationPicker() }
