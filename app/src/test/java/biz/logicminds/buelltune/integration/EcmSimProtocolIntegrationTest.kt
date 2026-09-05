@@ -252,7 +252,7 @@ class EcmSimProtocolIntegrationTest {
             val elapsedMs = System.currentTimeMillis() - started
             assertTrue(
                 "must reject promptly, not hang past PduFraming's response timeout (${elapsedMs}ms elapsed)",
-                elapsedMs < PduFraming.RESPONSE_TIMEOUT_MS + 5000,
+                elapsedMs < PduFraming.DEFAULT_RESPONSE_TIMEOUT_MS + 5000,
             )
             assertNotNull(thrown.message)
 

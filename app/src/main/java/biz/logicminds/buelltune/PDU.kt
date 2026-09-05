@@ -17,8 +17,6 @@
  */
 package biz.logicminds.buelltune
 
-import java.text.ParseException
-
 /**
  * This class represents a data frame exchanged with the ECM via
  * [ECM.sendPDU] and (as of U7) [biz.logicminds.buelltune.transport.PduFraming.readFrame].
@@ -55,7 +53,7 @@ class PDU {
 	/**
 	 * Parse a PDU from a raw byte buffer.
 	 */
-	@Throws(ParseException::class)
+	@Throws(PduParseException::class)
 	constructor(packet: ByteArray, len: Int) {
 		pdu = ByteArray(len)
 		System.arraycopy(packet, 0, pdu, 0, len)
@@ -77,32 +75,32 @@ class PDU {
 		pdu[i++] = checksum()
 	}
 
-	@Throws(ParseException::class)
+	@Throws(PduParseException::class)
 	private fun validate() {
 		if (pdu.size < 9) {
-			throw ParseException("Short packet length.", 0)
+			throw PduParseException("Short packet length.", 0)
 		}
 		// Check for markers
 		if (pdu[0] != SOH) {
-			throw ParseException("Packet does not start with SOH.", 0)
+			throw PduParseException("Packet does not start with SOH.", 0)
 		}
 		if (pdu[4] != EOH) {
-			throw ParseException("No EOH detected.", 4)
+			throw PduParseException("No EOH detected.", 4)
 		}
 		if (pdu[5] != SOT) {
-			throw ParseException("No SOT detected.", 5)
+			throw PduParseException("No SOT detected.", 5)
 		}
 		val size = pdu[3].toInt() and 0xff
 		if (pdu.size - 7 != size) {
-			throw ParseException("Size/Length mismatch (" + (pdu.size - 7) + "/" + size + ")", 3)
+			throw PduParseException("Size/Length mismatch (" + (pdu.size - 7) + "/" + size + ")", 3)
 		}
 		if (pdu[pdu.size - 2] != EOT) {
-			throw ParseException("No EOT detected.", 2)
+			throw PduParseException("No EOT detected.", 2)
 		}
 		// Checksum
 		val cs = checksum()
 		if (cs != pdu[pdu.size - 1]) {
-			throw ParseException(
+			throw PduParseException(
 				"Invalid checksum (" + Integer.toHexString(cs.toInt()) + "/" +
 					Integer.toHexString(pdu[pdu.size - 1].toInt() and 0xff) + ")",
 				pdu.size - 1

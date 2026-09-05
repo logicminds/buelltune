@@ -18,131 +18,167 @@
 package biz.logicminds.buelltune.transport
 
 import biz.logicminds.buelltune.PDU
+import biz.logicminds.buelltune.PduParseException
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.channels.ClosedReceiveChannelException
+import kotlinx.coroutines.withTimeout
 import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
-import java.text.ParseException
 
 /**
- * The PDU wire-framing codec, extracted verbatim (KTD11) from the legacy
- * `ECM.sendPDU`/`ECM.receivePDU`/`ECM.read`. Every [EcmTransport]
- * implementation built on a blocking [InputStream]/[OutputStream] pair
- * (Bluetooth Classic, TCP) drives its `transact()` through [writeFrame]
- * and [readFrame] under its own `Mutex.withLock { }`; this object itself
- * holds no state and knows nothing about connections, so it cannot violate
- * KTD11's cleanup-outside-the-lock rule.
+ * The PDU wire-framing codec (KTD11), driven by every [EcmTransport]
+ * implementation from inside its own `Mutex.withLock { }`. This object
+ * holds no state and knows nothing about connections, so it cannot
+ * violate KTD11's cleanup-outside-the-lock rule.
  *
  * Frame shape: a 6-byte header (`SOH`, sender, recipient, `len`, `EOH`,
  * `SOT`) followed by `len + 1` bytes - the payload, `EOT`, and the XOR
  * checksum - which [PDU]'s own constructor parses and validates.
+ *
+ * Reads suspend on a [ByteLink] under `withTimeout` (R1, R3). The
+ * previous implementation polled `InputStream.available()` every 10ms and
+ * decremented a manual budget; that woke the thread 100 times a second
+ * per outstanding PDU on a loop whose own poll interval is 50-5000ms.
  */
 object PduFraming {
     /** SOH + sender + recipient + len + EOH + SOT. */
     const val HEADER_LENGTH = 6
 
     /**
-     * Per-PDU response-time budget, read from the current `ECM.kt` before
-     * this port: `private const val DEFAULT_TIMEOUT = 1000` (ms).
+     * Default per-PDU response budget, inherited from the legacy
+     * `ECM.kt`'s `private const val DEFAULT_TIMEOUT = 1000` (ms).
+     *
+     * Transports supply their own value (R4, KD8): this number was tuned
+     * against 9600-baud SPP, and a BLE round-trip crosses at least one
+     * connection interval, so it is a default rather than a constant.
      */
-    const val RESPONSE_TIMEOUT_MS = 1000
+    const val DEFAULT_RESPONSE_TIMEOUT_MS = 1000L
 
-    /** Write [request]'s framed bytes. Verbatim from `ECM.sendPDU`'s `out.write(pdu.getBytes())`. */
+    /** Write [request]'s framed bytes to [link]. */
     @Throws(IOException::class)
-    fun writeFrame(output: OutputStream, request: PDU) {
-        output.write(request.getBytes())
+    suspend fun writeFrame(link: ByteLink, request: PDU) {
+        link.write(request.getBytes())
     }
 
     /**
-     * Block (via a 10ms-interval availability poll, exactly as
-     * `ECM.read`/`ECM.receivePDU` did) until one complete, checksum-valid
-     * [PDU] has been read from [input] or [timeoutMs] elapses.
+     * Suspend until one complete, checksum-valid [PDU] has been read from
+     * [link], or [timeoutMs] elapses.
      *
-     * On any failure - a short/timed-out read, an invalid header, or a
-     * checksum mismatch - drains whatever is currently sitting in
-     * [input]'s buffer before rethrowing, so a caller who retries on the
-     * same stream resynchronizes to the next valid frame instead of
-     * parsing stale/misaligned bytes (the post-failure resync logic
-     * `ECM.receivePDU`'s `catch` block performed).
+     * On any failure - a timed-out read, an invalid header, or a checksum
+     * mismatch - drains whatever has already been delivered before
+     * rethrowing, so a caller who retries on the same link resynchronizes
+     * to the next valid frame instead of parsing misaligned bytes (the
+     * post-failure resync `ECM.receivePDU`'s `catch` block performed).
      *
-     * [buffer] is scratch space, reused byte-for-byte from the previous
-     * call - never read before being overwritten - so a caller whose own
-     * `Mutex` already serializes every `readFrame` on a given connection
-     * (every [EcmTransport] implementation does, inside `transact()`'s
-     * `mutex.withLock { }`) can pass in one instance-owned array instead of
-     * paying a fresh 256-byte allocation on every polled frame. Defaults to
-     * a fresh allocation so callers with no such guarantee - e.g. a test
-     * calling [readFrame] directly - are unaffected. Must be at least
+     * [buffer] is scratch space, reused byte-for-byte across calls - never
+     * read before being overwritten - so a caller whose `Mutex` already
+     * serializes every `readFrame` on a given link (every [EcmTransport]
+     * does, inside `transact()`) can pass one instance-owned array instead
+     * of allocating 256 bytes per polled frame. Must hold
      * [HEADER_LENGTH] + 256 bytes; a caller-supplied buffer is never
      * resized.
      */
     @Throws(IOException::class)
-    fun readFrame(input: InputStream, timeoutMs: Int = RESPONSE_TIMEOUT_MS, buffer: ByteArray = ByteArray(256)): PDU {
+    suspend fun readFrame(
+        link: ByteLink,
+        timeoutMs: Long = DEFAULT_RESPONSE_TIMEOUT_MS,
+        buffer: ByteArray = ByteArray(256),
+    ): PDU {
+        val carry = Carry()
         try {
-            readFully(input, buffer, 0, HEADER_LENGTH, timeoutMs)
+            readFully(link, carry, buffer, 0, HEADER_LENGTH, timeoutMs)
             if (buffer[0] != PDU.SOH && buffer[4] != PDU.EOH && buffer[5] != PDU.SOT) {
                 throw IOException("Invalid Header received.")
             }
             val len = buffer[3].toInt() and 0xff
-            readFully(input, buffer, HEADER_LENGTH, len + 1, timeoutMs)
+            readFully(link, carry, buffer, HEADER_LENGTH, len + 1, timeoutMs)
             return try {
                 PDU(buffer, len + 7)
-            } catch (e: ParseException) {
+            } catch (e: PduParseException) {
                 throw IOException("Unable to parse incoming PDU. " + e.localizedMessage)
             }
+        } catch (e: ClosedReceiveChannelException) {
+            throw IOException("Link closed while reading PDU.", e)
         } catch (ioe: IOException) {
-            drain(input)
+            drain(link)
             throw ioe
         }
     }
 
     /**
-     * Verbatim from `ECM.read(buffer, offset, len, timeoutMs)`: polls
-     * [InputStream.available] every 10ms, draining whatever has arrived on
-     * each wake-up, until [len] bytes have been read or [timeoutMs] is
-     * exhausted.
+     * Accumulate exactly [len] bytes into [buffer] at [offset], suspending
+     * on [ByteLink.incoming] until they arrive.
+     *
+     * [timeoutMs] is an **idle** budget, bounding the wait for the next
+     * delivery rather than the whole read. This is deliberate and matches
+     * the semantics of the `available()`-polling loop this replaced, whose
+     * `timeout -= 10` sat in the *else* branch - time spent actually
+     * receiving bytes consumed no budget, and the header and payload each
+     * got a fresh one. A single wall-clock budget spanning both would be
+     * strictly tighter than the old code: at 9600 baud a long frame costs
+     * real transmission time, and an ECM answering slowly but healthily
+     * would fail a write mid-page, since `ECM.writeEEPromPage` has no
+     * retry.
+     *
+     * Bytes past the requested length stay in [carry] for the next call -
+     * one delivery routinely spans the header/payload boundary.
      */
-    @Throws(IOException::class)
-    private fun readFully(input: InputStream, buffer: ByteArray, offset: Int, len: Int, timeoutMs: Int): Int {
+    private suspend fun readFully(
+        link: ByteLink,
+        carry: Carry,
+        buffer: ByteArray,
+        offset: Int,
+        len: Int,
+        timeoutMs: Long,
+    ) {
         if (offset + len >= buffer.size) {
             throw IOException("${offset + len}: Array index out of bounds.")
         }
-        var timeout = timeoutMs
-        var r = 0
-        while (r < len && timeout > 0) {
-            if (input.available() > 0) {
-                do {
-                    val toRead = minOf(len - r, input.available())
-                    val i = try {
-                        input.read(buffer, r + offset, toRead)
-                    } catch (rte: RuntimeException) {
-                        throw IOException("Runtime Exception while reading $toRead bytes at offset ${r + offset}")
-                    }
-                    if (i == -1) {
-                        throw IOException("EOF while reading $toRead/$len bytes at offset ${r + offset}")
-                    }
-                    r += i
-                } while (r < len && input.available() > 0)
-            } else {
-                try {
-                    Thread.sleep(10)
-                    timeout -= 10
-                } catch (e: InterruptedException) {
-                }
+        var written = carry.drainInto(buffer, offset, len)
+        while (written < len) {
+            val chunk = try {
+                withTimeout(timeoutMs) { link.incoming.receive() }
+            } catch (e: TimeoutCancellationException) {
+                throw IOException("Timeout reading $written from $len bytes at offset $offset.")
             }
+            val take = minOf(len - written, chunk.size)
+            chunk.copyInto(buffer, offset + written, 0, take)
+            written += take
+            if (take < chunk.size) carry.push(chunk, take)
         }
-        if (r != len) {
-            throw IOException("Timeout reading $r from $len bytes.")
-        }
-        return r
     }
 
-    /** Verbatim from `ECM.receivePDU`'s `catch` block: discard whatever is currently buffered. */
-    private fun drain(input: InputStream) {
-        try {
-            while (input.available() > 0) {
-                input.read()
+    /** Discard whatever has already been delivered, per the legacy resync. */
+    private fun drain(link: ByteLink) {
+        while (link.incoming.tryReceive().isSuccess) {
+            // discard
+        }
+    }
+
+    /**
+     * Leftover bytes from a delivery that overran the requested length.
+     * Scoped to one [readFrame] call: a frame's trailing bytes belong to
+     * that frame's reader, and anything still held when the read ends is
+     * discarded with the rest of the resync.
+     */
+    private class Carry {
+        private var bytes: ByteArray? = null
+        private var pos = 0
+
+        fun push(chunk: ByteArray, from: Int) {
+            bytes = chunk
+            pos = from
+        }
+
+        fun drainInto(buffer: ByteArray, offset: Int, len: Int): Int {
+            val held = bytes ?: return 0
+            val take = minOf(len, held.size - pos)
+            held.copyInto(buffer, offset, pos, pos + take)
+            pos += take
+            if (pos >= held.size) {
+                bytes = null
+                pos = 0
             }
-        } catch (e: IOException) {
+            return take
         }
     }
 }

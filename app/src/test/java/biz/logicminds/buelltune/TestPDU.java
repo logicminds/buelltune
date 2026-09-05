@@ -24,7 +24,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.nio.charset.StandardCharsets;
-import java.text.ParseException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -34,7 +33,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(JUnit4.class)
 public class TestPDU {
 	@Test
-	public void testVersionParsing() throws ParseException {
+	public void testVersionParsing() throws PduParseException {
 		byte[] data = new byte[]{0x01, 0x42, 0x00, 0x13, (byte) 0xFF, 0x02, 0x06, 0x42, 0x55, 0x45, 0x49, 0x42, 0x33, 0x31, 0x30, 0x20, 0x31, 0x32, 0x2D, 0x31, 0x31, 0x2D, 0x30, 0x33, 0x03, (byte) 0xE2};
 		PDU pdu = new PDU(data, data.length);
 		assertFalse(pdu.isRequest());
@@ -69,7 +68,7 @@ public class TestPDU {
 	}
 
 	@Test
-	public void testGetResponse() throws ParseException {
+	public void testGetResponse() throws PduParseException {
 		byte[] data = new byte[]{0x01, 0x42, 0x00, 0x12, (byte) 0xff, 0x02, 0x06, 0x00, 0x00, 0x00, 0x01, 0x00, 0x4d, (byte) 0xe8, 0x03, 0x7b, 0x06, (byte) 0x9e, 0x00, (byte) 0xcc, 0x00, (byte) 0xf4, 0x01, 0x03, (byte) 0xd5};
 		PDU pdu = new PDU(data, data.length);
 		assertTrue(pdu.isResponse());

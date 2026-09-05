@@ -21,7 +21,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.text.ParseException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -98,15 +97,15 @@ public class TestByteSemantics {
 	 * distinguishes a real protocol error from a short/malformed packet.
 	 */
 	@Test
-	public void testCorruptedChecksumRejected() throws ParseException {
+	public void testCorruptedChecksumRejected() throws PduParseException {
 		PDU valid = PDU.getRequest(1, 0, 0x10);
 		byte[] bytes = valid.getBytes().clone();
 		bytes[bytes.length - 1] = (byte) (bytes[bytes.length - 1] ^ 0xFF);
 
 		try {
 			new PDU(bytes, bytes.length);
-			fail("Expected ParseException for a corrupted checksum");
-		} catch (ParseException e) {
+			fail("Expected PduParseException for a corrupted checksum");
+		} catch (PduParseException e) {
 			assertTrue("Exception message should mention the checksum: " + e.getMessage(),
 				e.getMessage().contains("checksum"));
 		}

@@ -58,21 +58,24 @@ class BluetoothClassicTransport(
     override val state: StateFlow<ConnectionState> = _state.asStateFlow()
 
     @Volatile private var socket: BluetoothSocket? = null
-    @Volatile private var input: InputStream? = null
-    @Volatile private var output: OutputStream? = null
+    @Volatile private var link: ByteLink? = null
 
     /** Reused across every [transact] call (KTD11: safe because `mutex` serializes them). */
     private val frameBuffer = ByteArray(256)
 
     override suspend fun connect() {
         _state.value = ConnectionState.Connecting
+        // A connect() over a live link would strand the previous
+        // StreamByteLink's pump on a socket nobody holds a reference to,
+        // permanently occupying a Dispatchers.IO worker. Nothing upstream
+        // guarantees disconnect() was called first.
+        closeQuietly(socket)
         var opened: BluetoothSocket? = null
         try {
             val s = withContext(ioDispatcher) { socketFactory() }
             opened = s
             socket = s
-            input = s.inputStream
-            output = s.outputStream
+            link = StreamByteLink(s.inputStream, s.outputStream, ioDispatcher)
             _state.value = ConnectionState.Connected
         } catch (e: SecurityException) {
             closeQuietly(opened)
@@ -89,10 +92,9 @@ class BluetoothClassicTransport(
         try {
             return mutex.withLock {
                 withContext(ioDispatcher) {
-                    val out = output ?: throw IOException("Not connected to ECM.")
-                    val inp = input ?: throw IOException("Not connected to ECM.")
-                    PduFraming.writeFrame(out, request)
-                    PduFraming.readFrame(inp, buffer = frameBuffer)
+                    val l = link ?: throw IOException("Not connected to ECM.")
+                    PduFraming.writeFrame(l, request)
+                    PduFraming.readFrame(l, buffer = frameBuffer)
                 }
             }
         } catch (e: CancellationException) {
@@ -118,8 +120,7 @@ class BluetoothClassicTransport(
         } catch (e: IOException) {
         }
         socket = null
-        input = null
-        output = null
+        link = null
     }
 
     companion object {
