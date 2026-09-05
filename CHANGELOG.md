@@ -12,6 +12,42 @@ in the release pull request before merging.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-05
+
+- refactor: repoint definitions-provider facades off Context singletons ([`3225f18`](https://github.com/logicminds/buelltune/commit/3225f18))
+- refactor: consolidate SharedPreferences access into AppPreferences ([`c15f3e2`](https://github.com/logicminds/buelltune/commit/c15f3e2))
+- docs: track deferred kotlin-foundation follow-up backlog ([`b1d825e`](https://github.com/logicminds/buelltune/commit/b1d825e))
+- chore(deps): bump mockito, appcompat, material, usb-serial-for-android ([`5e760cf`](https://github.com/logicminds/buelltune/commit/5e760cf))
+- docs(plans): add read-only ECM chat feature plan ([`d6c80a3`](https://github.com/logicminds/buelltune/commit/d6c80a3))
+- feat(chat): bump toolchain and add Koog dependency (U1) ([`43166eb`](https://github.com/logicminds/buelltune/commit/43166eb))
+- feat(chat): add EcmTools read-only facade (U2) ([`ac8b02c`](https://github.com/logicminds/buelltune/commit/ac8b02c))
+- feat(chat): add LLM settings screen (U8) ([`768789d`](https://github.com/logicminds/buelltune/commit/768789d))
+- test(chat): add EcmTools JVM unit tests (U3) ([`9adb697`](https://github.com/logicminds/buelltune/commit/9adb697))
+- test(chat): add EcmTools ecmsim integration test (U4) ([`106d5c4`](https://github.com/logicminds/buelltune/commit/106d5c4))
+- fix(chat): correct Bedrock credential shape (U8 correction) ([`bae7457`](https://github.com/logicminds/buelltune/commit/bae7457))
+- feat(chat): add Koog tool adapter + agentic loop (U5) ([`5391dce`](https://github.com/logicminds/buelltune/commit/5391dce))
+- fix(chat): drop AWS Bedrock as an unsupported provider (KD4 correction) ([`fe9c8ad`](https://github.com/logicminds/buelltune/commit/fe9c8ad))
+- test(chat): add fake-LLM agentic-loop tests (U6) ([`287cab5`](https://github.com/logicminds/buelltune/commit/287cab5))
+- feat(chat): add conversation persistence (U7) ([`7c5559a`](https://github.com/logicminds/buelltune/commit/7c5559a))
+- feat(chat): add ChatFragment UI (U9) ([`ce6e313`](https://github.com/logicminds/buelltune/commit/ce6e313))
+- feat(chat): wire prompt chips + DDFI-2 system prompt (U10) ([`2855955`](https://github.com/logicminds/buelltune/commit/2855955))
+- docs(chat): document chat architecture and tool layer (U11) ([`331d15b`](https://github.com/logicminds/buelltune/commit/331d15b))
+- fix(chat): resolve Koog HTTP client provider crash and theme crash ([`1a03ba7`](https://github.com/logicminds/buelltune/commit/1a03ba7))
+- fix(chat): apply code-review findings - stale credential cache, orphaned turns, dead wrappers ([`fb4d5c1`](https://github.com/logicminds/buelltune/commit/fb4d5c1))
+- ci: fix API 34 instrumented-test RootViewWithoutFocusException flake ([`d3904d3`](https://github.com/logicminds/buelltune/commit/d3904d3))
+- ci: fix syntax error in previous fix - script lines run as separate sh -c invocations ([`10f5ec0`](https://github.com/logicminds/buelltune/commit/10f5ec0))
+- fix(chat): add persistent Providers entry point to conversation list ([`7089ccc`](https://github.com/logicminds/buelltune/commit/7089ccc))
+- feat(chat): provider icons, Kimi provider, OpenAI base URL, OpenRouter OAuth sign-in ([`4ff5c23`](https://github.com/logicminds/buelltune/commit/4ff5c23))
+- feat(chat): let riders pick a model from each provider's live list (R21) ([`f95ca26`](https://github.com/logicminds/buelltune/commit/f95ca26))
+- feat: add graphify knowledge graph, fix stale AGENTS.md file references ([`5b24444`](https://github.com/logicminds/buelltune/commit/5b24444))
+- feat(chat): add Kimi Code provider, fix real-device request failures ([`838c44f`](https://github.com/logicminds/buelltune/commit/838c44f))
+- fix(chat): raise tool-call iteration cap to a value Koog can actually use ([`96c5f8b`](https://github.com/logicminds/buelltune/commit/96c5f8b))
+- fix: keep connect FAB from covering chat send button, add missing drawer icons ([`5f11ea7`](https://github.com/logicminds/buelltune/commit/5f11ea7))
+- feat(chat): conversation previews, markdown rendering, thinking indicator ([`c9deb99`](https://github.com/logicminds/buelltune/commit/c9deb99))
+- chore(graphify): refresh knowledge graph output ([`c4de9b2`](https://github.com/logicminds/buelltune/commit/c4de9b2))
+- feat(chat): verify LLM provider keys and refresh setup on return ([`7eb949e`](https://github.com/logicminds/buelltune/commit/7eb949e))
+- chore(beads): sync issue tracker snapshot ([`76dbc48`](https://github.com/logicminds/buelltune/commit/76dbc48))
+- chore: add Eclipse Buildship project metadata ([`855de05`](https://github.com/logicminds/buelltune/commit/855de05))
 ## [0.1.1] - 2026-09-02
 
 - fix(build): remove deprecated AGP 9.2 gradle.properties flags ([`7148104`](https://github.com/logicminds/buelltune/commit/7148104))
