@@ -28,8 +28,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
 import java.net.Socket
 import java.net.SocketTimeoutException
 
@@ -55,8 +53,7 @@ class TcpTransport(
     override val state: StateFlow<ConnectionState> = _state.asStateFlow()
 
     @Volatile private var socket: Socket? = null
-    @Volatile private var input: InputStream? = null
-    @Volatile private var output: OutputStream? = null
+    @Volatile private var link: ByteLink? = null
 
     /** Reused across every [transact] call (KTD11: safe because `mutex` serializes them). */
     private val frameBuffer = ByteArray(256)
@@ -68,8 +65,7 @@ class TcpTransport(
             val s = withContext(ioDispatcher) { socketFactory() }
             opened = s
             socket = s
-            input = s.getInputStream()
-            output = s.getOutputStream()
+            link = StreamByteLink(s.getInputStream(), s.getOutputStream(), ioDispatcher)
             _state.value = ConnectionState.Connected
         } catch (e: SocketTimeoutException) {
             closeQuietly(opened)
@@ -86,10 +82,9 @@ class TcpTransport(
         try {
             return mutex.withLock {
                 withContext(ioDispatcher) {
-                    val out = output ?: throw IOException("Not connected to ECM.")
-                    val inp = input ?: throw IOException("Not connected to ECM.")
-                    PduFraming.writeFrame(out, request)
-                    PduFraming.readFrame(inp, buffer = frameBuffer)
+                    val l = link ?: throw IOException("Not connected to ECM.")
+                    PduFraming.writeFrame(l, request)
+                    PduFraming.readFrame(l, buffer = frameBuffer)
                 }
             }
         } catch (e: CancellationException) {
@@ -115,8 +110,7 @@ class TcpTransport(
         } catch (e: IOException) {
         }
         socket = null
-        input = null
-        output = null
+        link = null
     }
 
     companion object {

@@ -37,7 +37,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.IOException
-import java.io.OutputStream
 
 /**
  * The two operations [UsbSerialTransport] needs from a live USB-serial
@@ -97,13 +96,12 @@ private sealed class UsbSerialEvent {
  * method, so this transport does not repeat the selection).
  *
  * `onNewData`/`onRunError` are wrapped with `callbackFlow` into a
- * [UsbSerialEvent] stream and fed into [PolledByteQueueInputStream], a
- * thread-safe byte queue [PduFraming.readFrame] polls exactly like it
- * polls a real blocking [InputStream] - this queue, not a
- * `PipedInputStream`, is what replaces the deleted bridge. Writes go
- * straight through [UsbSerialConnection.write] wrapped as an
- * [OutputStream], preserving the legacy 2000ms write timeout
- * ([WRITE_TIMEOUT_MS]).
+ * [UsbSerialEvent] stream and fed into a [ChannelByteLink] (R1, R2,
+ * KTD2) - a coroutine channel [PduFraming.readFrame] suspends on,
+ * replacing the deleted `PolledByteQueueInputStream` and the
+ * `PipedInputStream` bridge before it. Writes go straight through
+ * [UsbSerialConnection.write], preserving the legacy 2000ms write
+ * timeout ([WRITE_TIMEOUT_MS]).
  */
 class UsbSerialTransport(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -115,7 +113,7 @@ class UsbSerialTransport(
     override val state: StateFlow<ConnectionState> = _state.asStateFlow()
 
     @Volatile private var connection: UsbSerialConnection? = null
-    @Volatile private var input: PolledByteQueueInputStream? = null
+    @Volatile private var link: ChannelByteLink? = null
     @Volatile private var eventsScope: CoroutineScope? = null
 
     /** Reused across every [transact] call (KTD11: safe because `mutex` serializes them). */
@@ -123,21 +121,23 @@ class UsbSerialTransport(
 
     override suspend fun connect() {
         _state.value = ConnectionState.Connecting
-        val incoming = PolledByteQueueInputStream()
         val opened = CompletableDeferred<UsbSerialConnection>()
         val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
+        val byteLink = ChannelByteLink(
+            sink = { bytes -> opened.await().write(bytes, WRITE_TIMEOUT_MS) },
+        )
         scope.launch {
             events(opened).collect { event ->
                 when (event) {
-                    is UsbSerialEvent.Data -> incoming.offer(event.bytes)
-                    is UsbSerialEvent.Error -> incoming.fail(event.exception)
+                    is UsbSerialEvent.Data -> byteLink.offer(event.bytes)
+                    is UsbSerialEvent.Error -> byteLink.fail(event.exception)
                 }
             }
         }
         try {
             val c = opened.await()
             connection = c
-            input = incoming
+            link = byteLink
             eventsScope = scope
             _state.value = ConnectionState.Connected
         } catch (e: SecurityException) {
@@ -184,10 +184,9 @@ class UsbSerialTransport(
         try {
             return mutex.withLock {
                 withContext(ioDispatcher) {
-                    val c = connection ?: throw IOException("Not connected to ECM.")
-                    val inp = input ?: throw IOException("Not connected to ECM.")
-                    PduFraming.writeFrame(UsbSerialOutputStream(c), request)
-                    PduFraming.readFrame(inp, buffer = frameBuffer)
+                    val l = link ?: throw IOException("Not connected to ECM.")
+                    PduFraming.writeFrame(l, request)
+                    PduFraming.readFrame(l, buffer = frameBuffer)
                 }
             }
         } catch (e: CancellationException) {
@@ -212,7 +211,7 @@ class UsbSerialTransport(
         eventsScope = null
         connection?.let { c -> runCatching { c.close() } }
         connection = null
-        input = null
+        link = null
     }
 
     companion object {
@@ -223,22 +222,5 @@ class UsbSerialTransport(
          * revision before the rebrand rewrote this transport).
          */
         const val WRITE_TIMEOUT_MS = 2000
-    }
-}
-
-/**
- * Blocking-write [OutputStream] wrapping [UsbSerialConnection.write] with
- * [UsbSerialTransport.WRITE_TIMEOUT_MS], so [PduFraming.writeFrame] can
- * drive it exactly like the real [java.io.InputStream]/[OutputStream] pair
- * [TcpTransport]/[BluetoothClassicTransport] use.
- */
-private class UsbSerialOutputStream(private val connection: UsbSerialConnection) : OutputStream() {
-    override fun write(b: Int) = connection.write(byteArrayOf(b.toByte()), UsbSerialTransport.WRITE_TIMEOUT_MS)
-
-    override fun write(b: ByteArray) = connection.write(b, UsbSerialTransport.WRITE_TIMEOUT_MS)
-
-    override fun write(b: ByteArray, off: Int, len: Int) {
-        val slice = if (off == 0 && len == b.size) b else b.copyOfRange(off, off + len)
-        connection.write(slice, UsbSerialTransport.WRITE_TIMEOUT_MS)
     }
 }

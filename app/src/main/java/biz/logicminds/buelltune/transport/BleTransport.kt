@@ -38,13 +38,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.IOException
-import java.io.OutputStream
 
 /**
  * BLE [EcmTransport] wrapping the vendored `SerialSocket`/`SerialListener`
- * pair (R7, R8, KD3, KTD11), replacing the legacy `ECM.connect(Context,
- * BluetoothDevice, Protocol)` overload's `PipedInputStream`/`PipedOutputStream`
- * bridge - deliberately **not** carried forward (see [PolledByteQueueInputStream]).
+ * pair (R7, R8, KD3, KTD11). Incoming chunks land in a [ChannelByteLink]
+ * (R1, R2, KTD2), replacing both the legacy `PipedInputStream` bridge and
+ * the polled byte queue that stood in for it.
  *
  * `SerialSocket` isn't directly constructible/fakeable the way
  * `BluetoothSocket` was mocked via Mockito for [BluetoothClassicTransport]
@@ -76,7 +75,7 @@ class BleTransport(
     override val state: StateFlow<ConnectionState> = _state.asStateFlow()
 
     @Volatile private var socket: BleSerialSocket? = null
-    @Volatile private var readBuffer: PolledByteQueueInputStream? = null
+    @Volatile private var link: ChannelByteLink? = null
     @Volatile private var eventJob: Job? = null
 
     /** Reused across every [transact] call (KTD11: safe because `mutex` serializes them). */
@@ -85,7 +84,7 @@ class BleTransport(
     override suspend fun connect() {
         _state.value = ConnectionState.Connecting
         val s = socketFactory()
-        val buffer = PolledByteQueueInputStream()
+        val byteLink = ChannelByteLink(sink = { bytes -> s.write(bytes) })
         val connectResult = CompletableDeferred<Unit>()
 
         val job = eventScope.launch {
@@ -93,12 +92,12 @@ class BleTransport(
                 when (event) {
                     is SerialEvent.Connect -> connectResult.complete(Unit)
                     is SerialEvent.ConnectError -> connectResult.completeExceptionally(event.exception)
-                    is SerialEvent.Read -> buffer.offer(event.data)
+                    is SerialEvent.Read -> byteLink.offer(event.data)
                     is SerialEvent.IoError -> {
                         // KTD11: this collector runs on its own job, never
                         // inside transact()'s mutex.withLock{} - the state
                         // transition below is always outside the lock.
-                        buffer.fail(event.exception)
+                        byteLink.fail(event.exception)
                         closeQuietly(s)
                         _state.value = ConnectionState.Failed(FailureCause.Io(event.exception))
                     }
@@ -125,7 +124,7 @@ class BleTransport(
         }
 
         socket = s
-        readBuffer = buffer
+        link = byteLink
         eventJob = job
         _state.value = ConnectionState.Connected
     }
@@ -134,10 +133,9 @@ class BleTransport(
         try {
             return mutex.withLock {
                 withContext(ioDispatcher) {
-                    val s = socket ?: throw IOException("Not connected to ECM.")
-                    val input = readBuffer ?: throw IOException("Not connected to ECM.")
-                    PduFraming.writeFrame(BleOutputStream(s), request)
-                    PduFraming.readFrame(input, buffer = frameBuffer)
+                    val l = link ?: throw IOException("Not connected to ECM.")
+                    PduFraming.writeFrame(l, request)
+                    PduFraming.readFrame(l, buffer = frameBuffer)
                 }
             }
         } catch (e: CancellationException) {
@@ -165,7 +163,7 @@ class BleTransport(
         } catch (e: Exception) {
         }
         socket = null
-        readBuffer = null
+        link = null
     }
 
     /**
@@ -238,9 +236,3 @@ internal class RealBleSerialSocket(private val serialSocket: SerialSocket) : Ble
     override fun disconnect() = serialSocket.disconnect()
 }
 
-/** Adapts [BleSerialSocket.write] to the [OutputStream] shape [PduFraming.writeFrame] expects. */
-private class BleOutputStream(private val socket: BleSerialSocket) : OutputStream() {
-    override fun write(b: Int) = socket.write(byteArrayOf(b.toByte()))
-    override fun write(b: ByteArray) = socket.write(b)
-    override fun write(b: ByteArray, off: Int, len: Int) = socket.write(b.copyOfRange(off, off + len))
-}
