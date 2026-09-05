@@ -117,7 +117,7 @@ class PduFramingTest {
     }
 
     @Test
-    fun readFrameHonoursTheSuppliedBudgetRatherThanApproximatingIt() = runTest {
+    fun readFrameHonoursTheSuppliedIdleBudgetRatherThanApproximatingIt() = runTest {
         val pdu = PDU(PDU.DROID_ID, PDU.getECMID(), byteArrayOf(PDU.CMD_VERSION))
 
         // A peer answering inside the budget succeeds.
@@ -140,12 +140,81 @@ class PduFramingTest {
     @Test
     fun writeFrameEmitsTheFramedBytesUnchanged() = runTest {
         val pdu = PDU(PDU.DROID_ID, PDU.getECMID(), byteArrayOf(PDU.CMD_VERSION))
+        // Captured from the pre-refactor implementation. Asserting against
+        // pdu.getBytes() would be vacuous: getBytes() returns the internal
+        // array by reference, so the comparison would be an array against
+        // itself and would hold no matter what writeFrame did.
+        val expected = byteArrayOf(
+            PDU.SOH, PDU.DROID_ID, PDU.getECMID(), 2, PDU.EOH, PDU.SOT,
+            PDU.CMD_VERSION, PDU.EOT,
+        )
+        // PDU.checksum() XORs indices 1 until size-1: SOH is excluded,
+        // EOT is included.
+        val checksum = expected.drop(1)
+            .fold(0) { acc, b -> acc xor (b.toInt() and 0xff) }
+            .toByte()
+        val golden = expected + checksum
         val link = FakeByteLink()
 
         PduFraming.writeFrame(link, pdu)
 
         assertEquals(1, link.written.size)
-        assertArrayEquals(pdu.getBytes(), link.written.single())
+        assertArrayEquals(golden, link.written.single())
+    }
+
+    @Test
+    fun readFrameConsumesBytesDeliveredBeforeItWasCalled() = runTest {
+        // U2's scenario: a BLE/USB callback pushes a chunk while nobody is
+        // reading. The deleted PolledByteQueueInputStream buffered these by
+        // hand; the channel must not lose them.
+        val pdu = PDU(PDU.DROID_ID, PDU.getECMID(), byteArrayOf(PDU.CMD_VERSION))
+        val link = ChannelByteLink(sink = {})
+        link.offer(pdu.getBytes())
+
+        assertArrayEquals(pdu.getBytes(), PduFraming.readFrame(link).getBytes())
+    }
+
+    @Test
+    fun readFrameSurfacesANonIoLinkFailureAsIoException() = runTest {
+        // BLE reports failures as an arbitrary Exception. Without
+        // normalisation the raw cause escapes readFrame's catches and every
+        // transport's `catch (e: IOException)`, leaving the transport
+        // reporting Connected on a dead link.
+        val link = ChannelByteLink(sink = {})
+        link.fail(IllegalStateException("GATT stack blew up"))
+
+        // The assertion that matters is the TYPE that escapes: an
+        // IOException, which readFrame declares and every transport's
+        // `catch (e: IOException)` matches. Without asIo() the raw
+        // IllegalStateException escapes instead, skipping cleanup and
+        // leaving the transport reporting Connected on a dead link.
+        // (receive() rethrows a copy of the close cause, so the original
+        // sits one or more levels down the cause chain.)
+        val thrown = assertFailsWithIo { PduFraming.readFrame(link) }
+        val causes = generateSequence(thrown.cause) { it.cause }.take(8).toList()
+        assertTrue(
+            "original cause should survive somewhere in the chain, got: $causes",
+            causes.any { it is IllegalStateException },
+        )
+    }
+
+    @Test
+    fun readFrameToleratesSlowTransmissionSoLongAsChunksKeepArriving() = runTest {
+        // The budget is an idle timeout, not a wall-clock frame budget: the
+        // polling loop this replaced decremented only while no bytes were
+        // available. A frame trickling in over 4x the budget must still
+        // succeed, or a slow-but-healthy ECM fails a write mid-page.
+        val pdu = PDU(PDU.DROID_ID, PDU.getECMID(), byteArrayOf(PDU.CMD_VERSION))
+        val bytes = pdu.getBytes()
+        val link = FakeByteLink()
+        launch {
+            for (b in bytes) {
+                delay(400)
+                link.deliver(byteArrayOf(b))
+            }
+        }
+
+        assertArrayEquals(bytes, PduFraming.readFrame(link, timeoutMs = 1000).getBytes())
     }
 
     /**

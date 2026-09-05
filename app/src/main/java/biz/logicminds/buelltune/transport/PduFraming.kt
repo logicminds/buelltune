@@ -85,23 +85,17 @@ object PduFraming {
     ): PDU {
         val carry = Carry()
         try {
-            withTimeout(timeoutMs) {
-                readFully(link, carry, buffer, 0, HEADER_LENGTH)
-                if (buffer[0] != PDU.SOH && buffer[4] != PDU.EOH && buffer[5] != PDU.SOT) {
-                    throw IOException("Invalid Header received.")
-                }
-                val len = buffer[3].toInt() and 0xff
-                readFully(link, carry, buffer, HEADER_LENGTH, len + 1)
+            readFully(link, carry, buffer, 0, HEADER_LENGTH, timeoutMs)
+            if (buffer[0] != PDU.SOH && buffer[4] != PDU.EOH && buffer[5] != PDU.SOT) {
+                throw IOException("Invalid Header received.")
             }
             val len = buffer[3].toInt() and 0xff
+            readFully(link, carry, buffer, HEADER_LENGTH, len + 1, timeoutMs)
             return try {
                 PDU(buffer, len + 7)
             } catch (e: PduParseException) {
                 throw IOException("Unable to parse incoming PDU. " + e.localizedMessage)
             }
-        } catch (e: TimeoutCancellationException) {
-            drain(link)
-            throw IOException("Timeout reading PDU.")
         } catch (e: ClosedReceiveChannelException) {
             throw IOException("Link closed while reading PDU.", e)
         } catch (ioe: IOException) {
@@ -111,13 +105,22 @@ object PduFraming {
     }
 
     /**
-     * Accumulate exactly [len] bytes into [buffer] at [offset],
-     * suspending on [ByteLink.incoming] until they arrive. Bytes past the
-     * requested length stay in [carry] for the next call - a single
-     * delivery routinely spans the header/payload boundary, and the old
-     * `available()`-bounded reads had no such boundary to straddle.
+     * Accumulate exactly [len] bytes into [buffer] at [offset], suspending
+     * on [ByteLink.incoming] until they arrive.
      *
-     * Caller wraps this in `withTimeout`; there is no manual budget here.
+     * [timeoutMs] is an **idle** budget, bounding the wait for the next
+     * delivery rather than the whole read. This is deliberate and matches
+     * the semantics of the `available()`-polling loop this replaced, whose
+     * `timeout -= 10` sat in the *else* branch - time spent actually
+     * receiving bytes consumed no budget, and the header and payload each
+     * got a fresh one. A single wall-clock budget spanning both would be
+     * strictly tighter than the old code: at 9600 baud a long frame costs
+     * real transmission time, and an ECM answering slowly but healthily
+     * would fail a write mid-page, since `ECM.writeEEPromPage` has no
+     * retry.
+     *
+     * Bytes past the requested length stay in [carry] for the next call -
+     * one delivery routinely spans the header/payload boundary.
      */
     private suspend fun readFully(
         link: ByteLink,
@@ -125,13 +128,18 @@ object PduFraming {
         buffer: ByteArray,
         offset: Int,
         len: Int,
+        timeoutMs: Long,
     ) {
         if (offset + len >= buffer.size) {
             throw IOException("${offset + len}: Array index out of bounds.")
         }
         var written = carry.drainInto(buffer, offset, len)
         while (written < len) {
-            val chunk = link.incoming.receive()
+            val chunk = try {
+                withTimeout(timeoutMs) { link.incoming.receive() }
+            } catch (e: TimeoutCancellationException) {
+                throw IOException("Timeout reading $written from $len bytes at offset $offset.")
+            }
             val take = minOf(len - written, chunk.size)
             chunk.copyInto(buffer, offset + written, 0, take)
             written += take

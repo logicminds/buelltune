@@ -24,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -106,8 +107,14 @@ internal class StreamByteLink(
             throw e
         } catch (e: Exception) {
             // A read on a socket closed by disconnect() lands here; the
-            // cause travels to whoever is waiting on incoming.
-            channel.close(e)
+            // cause travels to whoever is waiting on incoming. Normalised
+            // to IOException so readFrame's and transact's handlers still
+            // match - the deleted readFully had an explicit
+            // `catch (rte: RuntimeException) { throw IOException(...) }`
+            // for exactly this, and without it a RuntimeException out of
+            // a socket read escapes every catch and leaves the transport
+            // reporting Connected on a dead link.
+            channel.close(e.asIo())
         }
     }
 
@@ -119,7 +126,13 @@ internal class StreamByteLink(
     }
 
     override suspend fun close() {
-        pump.cancel()
+        // Cancelling the pump is not enough: it is parked in a blocking
+        // input.read() with no suspension point, and coroutine
+        // cancellation is cooperative. Closing the stream is what actually
+        // unblocks it.
+        scope.cancel()
+        runCatching { input.close() }
+        runCatching { output.close() }
         channel.close()
     }
 
@@ -156,9 +169,18 @@ internal class ChannelByteLink(
         channel.trySend(data)
     }
 
-    /** Report a link failure; [incoming] closes carrying [cause]. */
+    /**
+     * Report a link failure; [incoming] closes carrying [cause],
+     * normalised to [IOException].
+     *
+     * The deleted `PolledByteQueueInputStream.fail` did the same coercion
+     * (`e as? IOException ?: IOException(e.message, e)`). BLE feeds this
+     * from `onSerialIoError(e: Exception)`, an arbitrary exception, so
+     * without the coercion a GATT-stack RuntimeException escapes
+     * `readFrame`'s catches and every transport's `catch (e: IOException)`.
+     */
     fun fail(cause: Throwable) {
-        channel.close(cause)
+        channel.close(cause.asIo())
     }
 
     override suspend fun write(bytes: ByteArray) = sink(bytes)
@@ -168,3 +190,6 @@ internal class ChannelByteLink(
         onClose()
     }
 }
+
+/** Coerce an arbitrary failure into the [IOException] the transport layer contracts on. */
+private fun Throwable.asIo(): IOException = this as? IOException ?: IOException(message, this)

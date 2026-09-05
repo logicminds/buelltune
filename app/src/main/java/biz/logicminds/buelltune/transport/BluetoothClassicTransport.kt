@@ -65,6 +65,11 @@ class BluetoothClassicTransport(
 
     override suspend fun connect() {
         _state.value = ConnectionState.Connecting
+        // A connect() over a live link would strand the previous
+        // StreamByteLink's pump on a socket nobody holds a reference to,
+        // permanently occupying a Dispatchers.IO worker. Nothing upstream
+        // guarantees disconnect() was called first.
+        closeQuietly(socket)
         var opened: BluetoothSocket? = null
         try {
             val s = withContext(ioDispatcher) { socketFactory() }
